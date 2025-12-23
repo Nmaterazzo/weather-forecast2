@@ -246,6 +246,72 @@
             margin-bottom: 20px;
         }
 
+        .daily-forecast {
+            margin-bottom: 20px;
+        }
+
+        .daily-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .daily-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .daily-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a90e2;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #2a2a2a;
+            padding-bottom: 8px;
+        }
+
+        .daily-content {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .daily-stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .daily-label {
+            color: #999;
+        }
+
+        .daily-value {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .daily-value.temp {
+            color: #4a90e2;
+        }
+
+        .daily-value.wind {
+            color: #f39c12;
+        }
+
+        .daily-value.rain {
+            color: #3498db;
+        }
+
+        .daily-value.snow {
+            color: #9b59b6;
+        }
+
+        .hourly-forecast {
+            margin-top: 20px;
+        }
+
         .hourly-table {
             width: 100%;
             border-collapse: collapse;
@@ -377,10 +443,20 @@
                 </div>
             </div>
 
-            <div class="hourly-forecast">
-                <div class="chart-card">
-                    <div class="chart-title">Hourly Forecast</div>
-                    <div id="hourlyTable" style="overflow-x: auto;"></div>
+            <div class="daily-forecast">
+                <div class="daily-cards">
+                    <div class="daily-card">
+                        <div class="daily-title">Today</div>
+                        <div class="daily-content" id="todayForecast">--</div>
+                    </div>
+                    <div class="daily-card">
+                        <div class="daily-title">Tomorrow</div>
+                        <div class="daily-content" id="tomorrowForecast">--</div>
+                    </div>
+                    <div class="daily-card">
+                        <div class="daily-title">Day After</div>
+                        <div class="daily-content" id="dayAfterForecast">--</div>
+                    </div>
                 </div>
             </div>
 
@@ -422,6 +498,13 @@
                     <div class="chart-wrapper">
                         <canvas id="windChart"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <div class="hourly-forecast">
+                <div class="chart-card">
+                    <div class="chart-title">Hourly Forecast</div>
+                    <div id="hourlyTable" style="overflow-x: auto;"></div>
                 </div>
             </div>
         </div>
@@ -694,19 +777,30 @@
             const hourlyData = currentForecastData;
             const timeRange = parseInt(document.getElementById('timeRange').value);
             
-            // Limit data to selected time range
-            const hours = hourlyData.time.slice(0, timeRange).map(time => {
+            // Find the current hour index (first future hour)
+            const now = new Date();
+            let startIndex = 0;
+            for (let i = 0; i < hourlyData.time.length; i++) {
+                const hourTime = new Date(hourlyData.time[i]);
+                if (hourTime >= now) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            
+            // Slice data starting from current hour
+            const hours = hourlyData.time.slice(startIndex, startIndex + timeRange).map(time => {
                 const date = new Date(time);
                 return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
             });
 
-            const temps = hourlyData.temperature_2m.slice(0, timeRange);
-            const feelsLike = hourlyData.apparent_temperature ? hourlyData.apparent_temperature.slice(0, timeRange) : temps;
-            const precipProb = hourlyData.precipitation_probability ? hourlyData.precipitation_probability.slice(0, timeRange) : Array(timeRange).fill(0);
-            const totalPrecip = hourlyData.precipitation ? hourlyData.precipitation.slice(0, timeRange) : Array(timeRange).fill(0);
-            const rain = hourlyData.rain ? hourlyData.rain.slice(0, timeRange) : totalPrecip;
-            const snow = hourlyData.snowfall ? hourlyData.snowfall.slice(0, timeRange) : Array(timeRange).fill(0);
-            const wind = hourlyData.wind_speed_10m.slice(0, timeRange);
+            const temps = hourlyData.temperature_2m.slice(startIndex, startIndex + timeRange);
+            const feelsLike = hourlyData.apparent_temperature ? hourlyData.apparent_temperature.slice(startIndex, startIndex + timeRange) : temps;
+            const precipProb = hourlyData.precipitation_probability ? hourlyData.precipitation_probability.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
+            const totalPrecip = hourlyData.precipitation ? hourlyData.precipitation.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
+            const rain = hourlyData.rain ? hourlyData.rain.slice(startIndex, startIndex + timeRange) : totalPrecip;
+            const snow = hourlyData.snowfall ? hourlyData.snowfall.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
+            const wind = hourlyData.wind_speed_10m.slice(startIndex, startIndex + timeRange);
 
             // Calculate precipitation totals
             const totalRain = rain.reduce((a, b) => a + (b || 0), 0);
@@ -717,6 +811,9 @@
                 <strong>Total Precipitation:</strong> ${totalAll.toFixed(2)}" 
                 (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")
             `;
+
+            // Generate daily forecasts
+            generateDailyForecasts(hourlyData, startIndex);
 
             // Generate hourly forecast table
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
@@ -1057,6 +1154,80 @@
                     }
                 }
             });
+        }
+
+        function generateDailyForecasts(hourlyData, startIndex) {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const tomorrowStart = new Date(todayStart);
+            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+            const dayAfterStart = new Date(todayStart);
+            dayAfterStart.setDate(dayAfterStart.getDate() + 2);
+            const dayAfterEnd = new Date(dayAfterStart);
+            dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+
+            // Helper function to get day's data
+            function getDayData(dayStart, dayEnd) {
+                const dayIndices = [];
+                for (let i = 0; i < hourlyData.time.length; i++) {
+                    const time = new Date(hourlyData.time[i]);
+                    if (time >= dayStart && time < dayEnd) {
+                        dayIndices.push(i);
+                    }
+                }
+
+                if (dayIndices.length === 0) return null;
+
+                const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
+                const dayWind = dayIndices.map(i => hourlyData.wind_speed_10m[i]);
+                const dayRain = dayIndices.map(i => hourlyData.rain?.[i] || 0);
+                const daySnow = dayIndices.map(i => hourlyData.snowfall?.[i] || 0);
+
+                return {
+                    highTemp: Math.max(...dayTemps),
+                    lowTemp: Math.min(...dayTemps),
+                    highWind: Math.max(...dayWind),
+                    lowWind: Math.min(...dayWind),
+                    totalRain: dayRain.reduce((a, b) => a + b, 0),
+                    totalSnow: daySnow.reduce((a, b) => a + b, 0)
+                };
+            }
+
+            // Generate HTML for a day
+            function formatDayForecast(data) {
+                if (!data) return '<div class="daily-value">No data available</div>';
+                
+                return `
+                    <div class="daily-stat">
+                        <span class="daily-label">Low/High Temp:</span>
+                        <span class="daily-value temp">${Math.round(data.lowTemp)}°F / ${Math.round(data.highTemp)}°F</span>
+                    </div>
+                    <div class="daily-stat">
+                        <span class="daily-label">Wind Range:</span>
+                        <span class="daily-value wind">${Math.round(data.lowWind)}-${Math.round(data.highWind)} mph</span>
+                    </div>
+                    <div class="daily-stat">
+                        <span class="daily-label">Rain:</span>
+                        <span class="daily-value rain">${data.totalRain.toFixed(2)}"</span>
+                    </div>
+                    <div class="daily-stat">
+                        <span class="daily-label">Snow:</span>
+                        <span class="daily-value snow">${data.totalSnow.toFixed(2)}"</span>
+                    </div>
+                `;
+            }
+
+            // Today (from now until midnight)
+            const todayData = getDayData(now, tomorrowStart);
+            document.getElementById('todayForecast').innerHTML = formatDayForecast(todayData);
+
+            // Tomorrow (full day)
+            const tomorrowData = getDayData(tomorrowStart, dayAfterStart);
+            document.getElementById('tomorrowForecast').innerHTML = formatDayForecast(tomorrowData);
+
+            // Day after (full day)
+            const dayAfterData = getDayData(dayAfterStart, dayAfterEnd);
+            document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(dayAfterData);
         }
 
         function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind) {
