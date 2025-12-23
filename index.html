@@ -242,6 +242,57 @@
             display: block;
         }
 
+        .hourly-forecast {
+            margin-bottom: 20px;
+        }
+
+        .hourly-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .hourly-table th {
+            background: #252525;
+            padding: 12px 8px;
+            text-align: left;
+            color: #999;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .hourly-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .hourly-table tr:hover {
+            background: #1f1f1f;
+        }
+
+        .temp-cell {
+            color: #4a90e2;
+            font-weight: 600;
+        }
+
+        .precip-cell {
+            color: #5ebd5e;
+        }
+
+        .wind-cell {
+            color: #f39c12;
+        }
+
+        .rain-cell {
+            color: #3498db;
+        }
+
+        .snow-cell {
+            color: #9b59b6;
+        }
+
         @media (max-width: 768px) {
             .input-group {
                 grid-template-columns: 1fr;
@@ -323,6 +374,13 @@
                         <div class="current-label">Conditions</div>
                         <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
+                </div>
+            </div>
+
+            <div class="hourly-forecast">
+                <div class="chart-card">
+                    <div class="chart-title">Hourly Forecast</div>
+                    <div id="hourlyTable" style="overflow-x: auto;"></div>
                 </div>
             </div>
 
@@ -660,6 +718,9 @@
                 (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")
             `;
 
+            // Generate hourly forecast table
+            generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
+
             // Temperature & Feels Like Chart
             const ctx1 = document.getElementById('tempChart').getContext('2d');
             
@@ -996,6 +1057,45 @@
                     }
                 }
             });
+        }
+
+        function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind) {
+            let tableHTML = `
+                <table class="hourly-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temp</th>
+                            <th>Feels Like</th>
+                            <th>Precip %</th>
+                            <th>Rain</th>
+                            <th>Snow</th>
+                            <th>Wind</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (let i = 0; i < hours.length; i++) {
+                tableHTML += `
+                    <tr>
+                        <td>${hours[i]}</td>
+                        <td class="temp-cell">${Math.round(temps[i])}°F</td>
+                        <td class="temp-cell">${Math.round(feelsLike[i])}°F</td>
+                        <td class="precip-cell">${Math.round(precipProb[i])}%</td>
+                        <td class="rain-cell">${rain[i].toFixed(2)}"</td>
+                        <td class="snow-cell">${snow[i].toFixed(2)}"</td>
+                        <td class="wind-cell">${Math.round(wind[i])} mph</td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('hourlyTable').innerHTML = tableHTML;
         }
 
         function getWeatherDescription(code) {
