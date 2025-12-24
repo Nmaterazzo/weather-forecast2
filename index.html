@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Model Forecast</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -41,7 +47,7 @@
 
         .input-group {
             display: grid;
-            grid-template-columns: 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -250,6 +256,44 @@
             margin-bottom: 20px;
         }
 
+        .radar-section {
+            margin-bottom: 20px;
+        }
+
+        .goes-section {
+            margin-bottom: 20px;
+        }
+
+        .historical-section {
+            margin-bottom: 20px;
+        }
+
+        .layer-btn {
+            padding: 8px 16px;
+            background: #252525;
+            border: 2px solid #333;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .layer-btn:hover {
+            border-color: #555;
+            background: #2a2a2a;
+        }
+
+        .layer-btn.active {
+            background: #4a90e2;
+            border-color: #4a90e2;
+            color: #fff;
+        }
+
+        #radarMap {
+            z-index: 1;
+        }
+
         .daily-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -376,9 +420,9 @@
             <h1>Weather Model Forecast</h1>
             
             <div class="input-group">
-                <input type="text" id="latInput" placeholder="Latitude (e.g., 28.2189)" value="28.2189">
-                <input type="text" id="lngInput" placeholder="Longitude (e.g., -82.4526)" value="-82.4526">
-                <button class="get-forecast-btn" onclick="getForecast()">Get Forecast</button>
+                <input type="text" id="cityInput" placeholder="Enter city name (e.g., Orlando, FL)" style="grid-column: 1 / -1;" onkeypress="if(event.key==='Enter') searchCity()">
+                <button class="get-forecast-btn" onclick="searchCity()">Search City</button>
+                <button class="get-forecast-btn" onclick="getCurrentLocation()" style="background: #5ebd5e;">Use Current Location</button>
             </div>
 
             <div class="preset-locations">
@@ -501,10 +545,36 @@
                 </div>
             </div>
 
+            <div class="historical-section">
+                <div class="chart-card">
+                    <div class="chart-title">Historical Weather (Past 24 Hours)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <div class="hourly-forecast">
                 <div class="chart-card">
                     <div class="chart-title">Hourly Forecast</div>
                     <div id="hourlyTable" style="overflow-x: auto;"></div>
+                </div>
+            </div>
+
+            <div class="radar-section">
+                <div class="chart-card">
+                    <div class="chart-title">Precipitation Radar</div>
+                    <div id="radarContainer" style="height: 500px; position: relative; background: #0a0a0a; border-radius: 8px; overflow: hidden;">
+                        <div id="radarMap" style="height: 100%; width: 100%;"></div>
+                        <div id="radarTimeline" style="position: absolute; bottom: 20px; left: 10px; right: 10px; background: rgba(26, 26, 26, 0.9); padding: 15px; border-radius: 8px; z-index: 1000;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <button onclick="playRadarAnimation()" id="playBtn" style="padding: 8px 16px; background: #4a90e2; border: none; border-radius: 6px; color: #fff; cursor: pointer;">Play</button>
+                                <button onclick="pauseRadarAnimation()" id="pauseBtn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer;">Pause</button>
+                                <span id="radarTimeDisplay" style="color: #e0e0e0; font-size: 14px;">--</span>
+                            </div>
+                            <input type="range" id="radarSlider" min="0" max="0" value="0" style="width: 100%;" oninput="updateRadarFrame(this.value)">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -516,7 +586,17 @@
         let precipChart = null;
         let precipAccumChart = null;
         let windChart = null;
+        let historicalChart = null;
         let currentForecastData = null;
+        let radarMap = null;
+        let radarMarker = null;
+        let radarLayer = null;
+        let goesMap = null;
+        let goesMarker = null;
+        let goesLayer = null;
+        let radarFrames = [];
+        let radarAnimationTimer = null;
+        let currentFrameIndex = 0;
 
         function selectModel(model) {
             currentModel = model;
@@ -527,14 +607,58 @@
         }
 
         function setLocation(lat, lng) {
-            document.getElementById('latInput').value = lat;
-            document.getElementById('lngInput').value = lng;
-            getForecast();
+            getForecast(lat, lng);
         }
 
-        async function getForecast() {
-            const lat = parseFloat(document.getElementById('latInput').value);
-            const lng = parseFloat(document.getElementById('lngInput').value);
+        async function searchCity() {
+            const cityName = document.getElementById('cityInput').value.trim();
+            
+            if (!cityName) {
+                showError('Please enter a city name');
+                return;
+            }
+
+            try {
+                // Use Nominatim geocoding to convert city name to coordinates
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    showError('City not found. Try including state/country (e.g., "Orlando, FL" or "Paris, France")');
+                    return;
+                }
+
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+
+                getForecast(lat, lng);
+            } catch (err) {
+                showError(`Error searching for city: ${err.message}`);
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showError('Geolocation is not supported by your browser');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    getForecast(lat, lng);
+                },
+                (error) => {
+                    document.getElementById('loading').style.display = 'none';
+                    showError('Unable to get your location. Please enable location services or enter a city name.');
+                }
+            );
+        }
+
+        async function getForecast(lat, lng) {
 
             if (isNaN(lat) || isNaN(lng)) {
                 showError('Please enter valid latitude and longitude values');
@@ -589,6 +713,18 @@
                 const data = await response.json();
                 console.log('API Response:', data);
 
+                // Fetch historical data (past 24 hours) from archive API
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+                console.log('Historical Data:', historicalData);
+
                 // Get location name
                 try {
                     const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
@@ -628,7 +764,10 @@
                 currentForecastData = data.hourly;
 
                 // Update charts
-                updateCharts();
+                updateCharts(historicalData);
+
+                // Initialize radar
+                initRadar(lat, lng);
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('forecast').classList.add('active');
@@ -759,8 +898,23 @@
                 // Store blended forecast data
                 currentForecastData = blendedHourly;
 
+                // Fetch historical data from archive API
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+                console.log('Historical Data:', historicalData);
+
                 // Update charts
-                updateCharts();
+                updateCharts(historicalData);
+
+                // Initialize radar
+                initRadar(lat, lng);
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('forecast').classList.add('active');
@@ -771,7 +925,137 @@
             }
         }
 
-        function updateCharts() {
+        async function initRadar(lat, lng) {
+            // Initialize radar map if not already created
+            if (!radarMap) {
+                radarMap = L.map('radarMap').setView([lat, lng], 7);
+                
+                // Add base map layer (dark theme)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap, &copy; CARTO',
+                    maxZoom: 19
+                }).addTo(radarMap);
+                
+            } else {
+                // Update existing map position
+                radarMap.setView([lat, lng], 7);
+            }
+
+            // Remove old radar marker if exists
+            if (radarMarker) {
+                radarMap.removeLayer(radarMarker);
+            }
+            
+            // Add radar location marker
+            radarMarker = L.marker([lat, lng]).addTo(radarMap);
+            radarMarker.bindPopup('Your Location').openPopup();
+
+            // Load RainViewer radar data
+            await loadRainViewerRadar();
+            
+            // Force map to resize properly
+            setTimeout(() => {
+                radarMap.invalidateSize();
+            }, 100);
+        }
+
+        async function loadRainViewerRadar() {
+            try {
+                // Fetch available radar timestamps from RainViewer API
+                const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await response.json();
+                
+                radarFrames = [];
+                
+                // Get past radar frames
+                if (data.radar && data.radar.past) {
+                    radarFrames = data.radar.past.map(frame => ({
+                        time: frame.time,
+                        path: frame.path,
+                        isPast: true
+                    }));
+                }
+                
+                // Get nowcast (future forecast) frames
+                if (data.radar && data.radar.nowcast) {
+                    const forecastFrames = data.radar.nowcast.map(frame => ({
+                        time: frame.time,
+                        path: frame.path,
+                        isPast: false
+                    }));
+                    radarFrames = radarFrames.concat(forecastFrames);
+                }
+                
+                if (radarFrames.length > 0) {
+                    // Setup slider
+                    const slider = document.getElementById('radarSlider');
+                    slider.max = radarFrames.length - 1;
+                    slider.value = radarFrames.length - 1; // Start at current time
+                    currentFrameIndex = radarFrames.length - 1;
+                    
+                    // Update initial frame
+                    updateRadarFrame(currentFrameIndex);
+                }
+                
+            } catch (err) {
+                console.error('Error loading RainViewer data:', err);
+            }
+        }
+
+        function updateRadarFrame(frameIndex) {
+            currentFrameIndex = parseInt(frameIndex);
+            
+            if (radarFrames.length === 0 || !radarMap) return;
+            
+            const frame = radarFrames[currentFrameIndex];
+            
+            // Remove old radar layer
+            if (radarLayer) {
+                radarMap.removeLayer(radarLayer);
+            }
+            
+            // Add new radar layer
+            radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                attribution: 'RainViewer',
+                opacity: 0.7,
+                maxZoom: 12
+            });
+            
+            radarLayer.addTo(radarMap);
+            
+            // Update time display
+            const date = new Date(frame.time * 1000);
+            const timeStr = date.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit' 
+            });
+            const label = frame.isPast ? 'Past' : 'Forecast';
+            document.getElementById('radarTimeDisplay').textContent = `${timeStr} (${label})`;
+        }
+
+        function playRadarAnimation() {
+            if (radarAnimationTimer) return; // Already playing
+            
+            radarAnimationTimer = setInterval(() => {
+                currentFrameIndex++;
+                if (currentFrameIndex >= radarFrames.length) {
+                    currentFrameIndex = 0;
+                }
+                document.getElementById('radarSlider').value = currentFrameIndex;
+                updateRadarFrame(currentFrameIndex);
+            }, 500); // 500ms per frame
+        }
+
+        function pauseRadarAnimation() {
+            if (radarAnimationTimer) {
+                clearInterval(radarAnimationTimer);
+                radarAnimationTimer = null;
+            }
+        }
+
+        function updateCharts(historicalData) {
             if (!currentForecastData) return;
 
             const hourlyData = currentForecastData;
@@ -814,6 +1098,11 @@
 
             // Generate daily forecasts
             generateDailyForecasts(hourlyData, startIndex);
+
+            // Generate historical chart
+            if (historicalData) {
+                generateHistoricalChart(historicalData);
+            }
 
             // Generate hourly forecast table
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
@@ -1041,8 +1330,8 @@
                         {
                             label: 'Snow Accumulation (in)',
                             data: cumulativeSnow,
-                            borderColor: '#ecf0f1',
-                            backgroundColor: 'rgba(236, 240, 241, 0.1)',
+                            borderColor: '#ffffff',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
                             tension: 0.4,
                             borderWidth: 2,
                             fill: false
@@ -1149,6 +1438,150 @@
                             },
                             grid: {
                                 color: '#2a2a2a'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateHistoricalChart(historicalData) {
+            if (!historicalData || !historicalData.hourly) return;
+
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            
+            if (historicalChart) {
+                historicalChart.destroy();
+            }
+
+            // Get past 24 hours of data
+            const hours = historicalData.hourly.time.map(time => {
+                const date = new Date(time);
+                return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
+            });
+
+            const temps = historicalData.hourly.temperature_2m || [];
+            const wind = historicalData.hourly.wind_speed_10m || [];
+            const rainHourly = historicalData.hourly.rain || [];
+            const snowHourly = historicalData.hourly.snowfall || [];
+
+            // Calculate cumulative precipitation
+            let cumulativeRain = [];
+            let cumulativeSnow = [];
+            let sumRain = 0;
+            let sumSnow = 0;
+
+            for (let i = 0; i < rainHourly.length; i++) {
+                sumRain += rainHourly[i] || 0;
+                sumSnow += snowHourly[i] || 0;
+                cumulativeRain.push(sumRain);
+                cumulativeSnow.push(sumSnow);
+            }
+
+            historicalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: 'Temperature (°F)',
+                            data: temps,
+                            borderColor: '#4a90e2',
+                            backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y',
+                            fill: false
+                        },
+                        {
+                            label: 'Wind (mph)',
+                            data: wind,
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y',
+                            fill: false
+                        },
+                        {
+                            label: 'Rain Accumulation (in)',
+                            data: cumulativeRain,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1',
+                            fill: true
+                        },
+                        {
+                            label: 'Snow Accumulation (in)',
+                            data: cumulativeSnow,
+                            borderColor: '#ffffff',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 12 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#999',
+                                maxRotation: 45,
+                                minRotation: 45,
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: '#2a2a2a'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: {
+                                color: '#4a90e2'
+                            },
+                            grid: {
+                                color: '#2a2a2a'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Temp (°F) / Wind (mph)',
+                                color: '#4a90e2'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            ticks: {
+                                color: '#3498db'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Accumulation (in)',
+                                color: '#3498db'
                             }
                         }
                     }
@@ -1305,9 +1738,9 @@
             errorDiv.classList.add('active');
         }
 
-        // Load Orlando forecast on page load
+        // Load Land O' Lakes forecast on page load
         window.addEventListener('load', () => {
-            getForecast();
+            getForecast(28.2189, -82.4526);
         });
     </script>
 </body>
