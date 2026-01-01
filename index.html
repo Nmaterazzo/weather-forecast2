@@ -829,7 +829,7 @@
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div class="chart-title" style="margin: 0;">Today's Hourly Forecast</div>
-                        <button class="expand-btn" id="expandBtn" onclick="toggleHeatmapExpand()">Show Feels Like & Gusts</button>
+                        <button class="expand-btn" id="expandBtn" onclick="toggleHeatmapExpand()">Show All Rows</button>
                     </div>
                     <div class="heatmap-container">
                         <div class="heatmap" id="heatmapGrid">
@@ -1634,7 +1634,7 @@
             
             if (extraRows && extraRows.classList.contains('expanded')) {
                 extraRows.classList.remove('expanded');
-                btn.textContent = 'Show Feels Like & Gusts';
+                btn.textContent = 'Show All Rows';
             } else if (extraRows) {
                 extraRows.classList.add('expanded');
                 btn.textContent = 'Hide Extra Rows';
@@ -1755,7 +1755,23 @@
                 html += `<div class="heatmap-hour ${hourClass}">${hourLabel}</div>`;
             }
 
-            // Temperature row
+            // Row 1: Conditions (visible by default)
+            html += '<div class="heatmap-label">Conditions</div>';
+            for (let hour = 0; hour < 24; hour++) {
+                if (hour < todayIndices.length) {
+                    const idx = todayIndices[hour];
+                    const code = hourlyData.weather_code?.[idx] || 0;
+                    const emoji = getWeatherEmoji(code);
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell condition-cell ${cellClass}">${emoji}</div>`;
+                } else {
+                    html += '<div class="heatmap-cell condition-cell">--</div>';
+                }
+            }
+
+            // Row 2: Temperature (visible by default)
             html += '<div class="heatmap-label">Temperature</div>';
             for (let hour = 0; hour < 24; hour++) {
                 if (hour < todayIndices.length) {
@@ -1772,10 +1788,7 @@
                 }
             }
 
-            // Extra rows (Feels Like and Wind Gusts)
-            html += '<div class="extra-rows" id="heatmapExtraRows">';
-
-            // Feels Like row (in expandable section, between temp and conditions)
+            // Row 3: Feels Like (visible by default)
             html += '<div class="heatmap-label">Feels Like</div>';
             const feelsLike = todayIndices.map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
             for (let hour = 0; hour < 24; hour++) {
@@ -1793,23 +1806,7 @@
                 }
             }
 
-            // Conditions row
-            html += '<div class="heatmap-label">Conditions</div>';
-            for (let hour = 0; hour < 24; hour++) {
-                if (hour < todayIndices.length) {
-                    const idx = todayIndices[hour];
-                    const code = hourlyData.weather_code?.[idx] || 0;
-                    const emoji = getWeatherEmoji(code);
-                    const isPast = hour < currentHour;
-                    const isCurrent = hour === currentHour;
-                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell condition-cell ${cellClass}">${emoji}</div>`;
-                } else {
-                    html += '<div class="heatmap-cell condition-cell">--</div>';
-                }
-            }
-
-            // Precipitation Probability row
+            // Row 4: Precipitation Probability (visible by default)
             html += '<div class="heatmap-label">Precip Chance</div>';
             for (let hour = 0; hour < 24; hour++) {
                 if (hour < todayIndices.length) {
@@ -1825,7 +1822,30 @@
                 }
             }
 
-            // Wind Speed row
+            // Extra rows (hidden by default)
+            html += '<div class="extra-rows" id="heatmapExtraRows">';
+
+            // Row 5: Precipitation Amount (hidden)
+            html += '<div class="heatmap-label">Precip Amount</div>';
+            const rain = todayIndices.map(i => hourlyData.rain?.[i] || 0);
+            const snow = todayIndices.map(i => hourlyData.snowfall?.[i] || 0);
+            const totalPrecip = rain.map((r, i) => r + snow[i]);
+            const maxPrecip = Math.max(...totalPrecip);
+            for (let hour = 0; hour < 24; hour++) {
+                if (hour < todayIndices.length) {
+                    const idx = todayIndices[hour];
+                    const precipAmt = (hourlyData.rain?.[idx] || 0) + (hourlyData.snowfall?.[idx] || 0);
+                    const opacity = maxPrecip > 0 ? Math.max(0.05, precipAmt / maxPrecip) : 0.05;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell precip-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${precipAmt.toFixed(2)}"</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell precip-cell" style="opacity: 0.05;">--</div>';
+                }
+            }
+
+            // Row 6: Wind Speed (hidden)
             html += '<div class="heatmap-label">Wind Speed</div>';
             const winds = todayIndices.map(i => hourlyData.wind_speed_10m[i]);
             const maxWind = Math.max(...winds);
@@ -1843,7 +1863,7 @@
                 }
             }
 
-            // Wind Gusts row (still in extra-rows section)
+            // Row 7: Wind Gusts (hidden)
             html += '<div class="heatmap-label">Wind Gusts</div>';
             const gusts = todayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
             const maxGust = Math.max(...gusts);
