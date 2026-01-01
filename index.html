@@ -444,7 +444,6 @@
         }
 
         .day-card {
-            background: #252525;
             border-radius: 12px;
             padding: 20px;
             border: 2px solid #333;
@@ -1794,8 +1793,6 @@
                 }
             }
 
-            html += '</div>';
-
             // Conditions row
             html += '<div class="heatmap-label">Conditions</div>';
             for (let hour = 0; hour < 24; hour++) {
@@ -1951,10 +1948,13 @@
                 
                 // Calculate average temp for card background
                 const avgTemp = (card.highTemp + card.lowTemp) / 2;
-                const bgColor = getTempClass(avgTemp);
+                const bgColorRgb = getTempClass(avgTemp);
+                // Convert rgb(r, g, b) to rgba(r, g, b, 0.15) for background
+                const bgColorLight = bgColorRgb.replace('rgb(', 'rgba(').replace(')', ', 0.15)');
+                const bgColorDark = bgColorRgb.replace('rgb(', 'rgba(').replace(')', ', 0.05)');
                 
                 html += `
-                    <div class="day-card ${todayClass}" onclick="openHourlyModal(${card.dayOffset})" style="background: linear-gradient(135deg, ${bgColor}15 0%, ${bgColor}05 100%);">
+                    <div class="day-card ${todayClass}" onclick="openHourlyModal(${card.dayOffset})" style="background: linear-gradient(135deg, ${bgColorLight} 0%, ${bgColorDark} 100%), #252525;">
                         <div class="day-card-header">
                             <div>
                                 <div class="day-card-day">${card.dayName}</div>
@@ -2036,11 +2036,11 @@
                     <td>${timeStr}</td>
                     <td class="temp-cell">${temp}°F</td>
                     <td class="temp-cell">${feels}°F</td>
-                    <td class="precip-cell">${precipProb}%</td>
+                    <td class="precip-cell" style="color: #fff;">${precipProb}%</td>
                     <td class="rain-cell">${rain}"</td>
                     <td class="snow-cell">${snow}"</td>
-                    <td class="wind-cell">${wind} mph</td>
-                    <td class="wind-cell">${gusts} mph</td>
+                    <td class="wind-cell" style="color: #fff;">${wind} mph</td>
+                    <td class="wind-cell" style="color: #fff;">${gusts} mph</td>
                 </tr>`;
             });
 
