@@ -1391,7 +1391,6 @@
             
             document.getElementById('precipTotals').innerHTML = `<strong>Total:</strong> ${totalAll.toFixed(2)}" (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")`;
 
-            generateDailyForecasts(hourlyData, startIndex);
             if (historicalData) generateHistoricalChart(historicalData);
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts);
 
@@ -1628,56 +1627,6 @@
                     }
                 }
             });
-        }
-
-        function generateDailyForecasts(hourlyData, startIndex) {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const tomorrowStart = new Date(todayStart);
-            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-            const dayAfterStart = new Date(todayStart);
-            dayAfterStart.setDate(dayAfterStart.getDate() + 2);
-            const dayAfterEnd = new Date(dayAfterStart);
-            dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
-
-            function getDayData(dayStart, dayEnd) {
-                const dayIndices = [];
-                for (let i = 0; i < hourlyData.time.length; i++) {
-                    const time = new Date(hourlyData.time[i]);
-                    if (time >= dayStart && time < dayEnd) dayIndices.push(i);
-                }
-                if (dayIndices.length === 0) return null;
-
-                const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
-                const dayWind = dayIndices.map(i => hourlyData.wind_speed_10m[i]);
-                const dayGusts = dayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
-                const dayRain = dayIndices.map(i => hourlyData.rain?.[i] || 0);
-                const daySnow = dayIndices.map(i => hourlyData.snowfall?.[i] || 0);
-
-                return {
-                    highTemp: Math.max(...dayTemps),
-                    lowTemp: Math.min(...dayTemps),
-                    highWind: Math.max(...dayWind),
-                    highGusts: Math.max(...dayGusts),
-                    totalRain: dayRain.reduce((a, b) => a + b, 0),
-                    totalSnow: daySnow.reduce((a, b) => a + b, 0)
-                };
-            }
-
-            function formatDayForecast(data) {
-                if (!data) return '<div class="daily-value">No data</div>';
-                return `
-                    <div class="daily-stat"><span class="daily-label">Temp:</span><span class="daily-value temp">${Math.round(data.lowTemp)}°-${Math.round(data.highTemp)}°F</span></div>
-                    <div class="daily-stat"><span class="daily-label">Wind:</span><span class="daily-value wind">${Math.round(data.highWind)} mph</span></div>
-                    <div class="daily-stat"><span class="daily-label">Gusts:</span><span class="daily-value wind">${Math.round(data.highGusts)} mph</span></div>
-                    <div class="daily-stat"><span class="daily-label">Rain:</span><span class="daily-value rain">${data.totalRain.toFixed(2)}"</span></div>
-                    <div class="daily-stat"><span class="daily-label">Snow:</span><span class="daily-value snow">${data.totalSnow.toFixed(2)}"</span></div>
-                `;
-            }
-
-            document.getElementById('todayForecast').innerHTML = formatDayForecast(getDayData(now, tomorrowStart));
-            document.getElementById('tomorrowForecast').innerHTML = formatDayForecast(getDayData(tomorrowStart, dayAfterStart));
-            document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(getDayData(dayAfterStart, dayAfterEnd));
         }
 
         function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts) {
