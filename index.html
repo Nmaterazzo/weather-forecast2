@@ -1101,12 +1101,9 @@
         }
 
         function buildSmartBlend(weathergov, bestmatch, gfs, ecmwf) {
-            const maxLength = Math.max(
-                weathergov?.time.length || 0,
-                bestmatch?.time.length || 0,
-                gfs?.time.length || 0,
-                ecmwf?.time.length || 0
-            );
+            // FIX: Use the longest available forecast for base times (usually GFS with 240 hours)
+            const baseTimes = gfs?.time || ecmwf?.time || bestmatch?.time;
+            if (!baseTimes) return null;
 
             const blended = {
                 time: [],
@@ -1121,53 +1118,149 @@
                 weather_code: []
             };
 
-            const baseTimes = gfs?.time || ecmwf?.time;
-            
-            for (let i = 0; i < maxLength; i++) {
-                if (i < baseTimes.length) {
-                    blended.time.push(baseTimes[i]);
-                }
+            const now = new Date();
 
-                let modelsToAvg = [];
+            // Build index maps for each model based on timestamp matching
+            const buildIndexMap = (modelData) => {
+                if (!modelData) return {};
+                const map = {};
+                modelData.time.forEach((time, idx) => {
+                    map[time] = idx;
+                });
+                return map;
+            };
 
-                if (i < 24) {
-                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
-                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
-                }
-                else if (i < 48) {
-                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
-                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
-                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
-                }
-                else if (i < 72) {
-                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
-                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
-                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
-                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
-                }
-                else if (i < 120) {
-                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
-                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
-                }
-                else {
-                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
-                }
+            const weathergovMap = buildIndexMap(weathergov);
+            const bestmatchMap = buildIndexMap(bestmatch);
+            const gfsMap = buildIndexMap(gfs);
+            const ecmwfMap = buildIndexMap(ecmwf);
 
-                if (modelsToAvg.length === 0) break;
+            // Process each timestamp in the base forecast
+            for (let i = 0; i < baseTimes.length; i++) {
+                const timestamp = baseTimes[i];
+                const forecastTime = new Date(timestamp);
+                const hoursFromNow = (forecastTime - now) / (1000 * 60 * 60);
 
-                blended.temperature_2m[i] = modelsToAvg.reduce((s, m) => s + (m.temperature_2m[i] || 0), 0) / modelsToAvg.length;
-                blended.apparent_temperature[i] = modelsToAvg.reduce((s, m) => s + (m.apparent_temperature?.[i] || m.temperature_2m[i]), 0) / modelsToAvg.length;
-                blended.precipitation_probability[i] = modelsToAvg.reduce((s, m) => s + (m.precipitation_probability?.[i] || 0), 0) / modelsToAvg.length;
-                blended.precipitation[i] = modelsToAvg.reduce((s, m) => s + (m.precipitation?.[i] || 0), 0) / modelsToAvg.length;
-                blended.rain[i] = modelsToAvg.reduce((s, m) => s + (m.rain?.[i] || 0), 0) / modelsToAvg.length;
-                blended.snowfall[i] = modelsToAvg.reduce((s, m) => s + (m.snowfall?.[i] || 0), 0) / modelsToAvg.length;
-                blended.wind_speed_10m[i] = modelsToAvg.reduce((s, m) => s + (m.wind_speed_10m[i] || 0), 0) / modelsToAvg.length;
-                blended.wind_gusts_10m[i] = modelsToAvg.reduce((s, m) => s + (m.wind_gusts_10m?.[i] || 0), 0) / modelsToAvg.length;
+                blended.time.push(timestamp);
+
+                // Collect available data from each model for this timestamp
+                const dataPoints = [];
                 
-                if (bestmatch && i < bestmatch.time.length && bestmatch.weather_code) {
-                    blended.weather_code[i] = bestmatch.weather_code[i];
-                } else if (modelsToAvg.length > 0 && modelsToAvg[0].weather_code) {
-                    blended.weather_code[i] = modelsToAvg[0].weather_code[i];
+                // Determine which models to use based on forecast hour
+                if (hoursFromNow < 24) {
+                    // 0-24 hours: Weather.gov + Best Match
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 48) {
+                    // 25-48 hours: Weather.gov + Best Match + ECMWF
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 72) {
+                    // 49-72 hours: Weather.gov + Best Match + ECMWF + GFS
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 120) {
+                    // 73-120 hours: ECMWF + GFS
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                } else {
+                    // 121-240 hours: GFS only
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                }
+
+                // If no data available for this timestamp, use null values
+                if (dataPoints.length === 0) {
+                    blended.temperature_2m[i] = null;
+                    blended.apparent_temperature[i] = null;
+                    blended.precipitation_probability[i] = 0;
+                    blended.precipitation[i] = 0;
+                    blended.rain[i] = 0;
+                    blended.snowfall[i] = 0;
+                    blended.wind_speed_10m[i] = 0;
+                    blended.wind_gusts_10m[i] = 0;
+                    blended.weather_code[i] = 0;
+                    continue;
+                }
+
+                // Average the available data points
+                blended.temperature_2m[i] = dataPoints.reduce((s, d) => s + (d.model.temperature_2m[d.idx] || 0), 0) / dataPoints.length;
+                blended.apparent_temperature[i] = dataPoints.reduce((s, d) => s + (d.model.apparent_temperature?.[d.idx] || d.model.temperature_2m[d.idx]), 0) / dataPoints.length;
+                blended.precipitation_probability[i] = dataPoints.reduce((s, d) => s + (d.model.precipitation_probability?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.precipitation[i] = dataPoints.reduce((s, d) => s + (d.model.precipitation?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.rain[i] = dataPoints.reduce((s, d) => s + (d.model.rain?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.snowfall[i] = dataPoints.reduce((s, d) => s + (d.model.snowfall?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.wind_speed_10m[i] = dataPoints.reduce((s, d) => s + (d.model.wind_speed_10m[d.idx] || 0), 0) / dataPoints.length;
+                blended.wind_gusts_10m[i] = dataPoints.reduce((s, d) => s + (d.model.wind_gusts_10m?.[d.idx] || 0), 0) / dataPoints.length;
+                
+                // For weather code, prefer best_match if available
+                const bestmatchPoint = dataPoints.find(d => d.model === bestmatch);
+                if (bestmatchPoint && bestmatchPoint.model.weather_code) {
+                    blended.weather_code[i] = bestmatchPoint.model.weather_code[bestmatchPoint.idx];
+                } else if (dataPoints[0] && dataPoints[0].model.weather_code) {
+                    blended.weather_code[i] = dataPoints[0].model.weather_code[dataPoints[0].idx];
                 } else {
                     blended.weather_code[i] = 0;
                 }
