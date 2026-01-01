@@ -179,60 +179,97 @@
             z-index: 0;
         }
 
+/* * --- NEW DYNAMIC BACKGROUND STYLES (Simulated with gradients) ---
+         * These will be applied as classes to the .hero-temp element via JS.
+         */
+
+        .hero-temp.clear {
+            background-color: #4a90e2; /* Clear/Sunny Day Blue */
+        }
         .hero-temp.clear::before {
-            /* Light blue sky with a real sun */
-            background-image: url('');
-            background-color: #7dd3fc; /* Tailwind sky-300 as fallback */
+            /* Light Blue Sky + Yellow Sun */
+            background: radial-gradient(circle at 80% 20%, #ffeb3b 10%, #4a90e2 40%, #89cff0 100%);
+            opacity: 1;
+            border-color: #89cff0;
         }
 
+        .hero-temp.partly-cloudy {
+            background-color: #6a8ba7; /* Softer Blue/Gray */
+        }
         .hero-temp.partly-cloudy::before {
-            /* Scattered clouds */
-            background-image: url('');
-            background-color: #93c5fd; /* Tailwind blue-300 as fallback */
+            /* Mix of light blue and soft gray clouds */
+            background: linear-gradient(135deg, #a7b9c6 0%, #89cff0 40%, #6a8ba7 100%);
+            opacity: 1;
+            border-color: #a7b9c6;
         }
 
+        .hero-temp.cloudy, .hero-temp.overcast {
+            background-color: #5c6770; /* Darker Gray for Overcast */
+        }
         .hero-temp.cloudy::before, .hero-temp.overcast::before {
-            /* Overcast/Cloudy */
-            background-image: url('');
-            background-color: #6b7280; /* Tailwind gray-500 as fallback */
+            /* Flat gray/cloudy sky */
+            background: linear-gradient(135deg, #7f8c8d 0%, #5c6770 100%);
+            opacity: 1;
+            border-color: #7f8c8d;
         }
 
+        .hero-temp.rain, .hero-temp.drizzle {
+            background-color: #34495e; /* Stormy Dark Blue/Gray */
+        }
         .hero-temp.rain::before, .hero-temp.drizzle::before {
-            /* Clouds with rain */
-            background-image: url('');
-            background-color: #3b82f6; /* Tailwind blue-500 as fallback */
+            /* Dark cloud base with subtle rain lines (simple simulation) */
+            background: linear-gradient(180deg, #566573 0%, #2c3e50 100%);
+            opacity: 1;
+            border-color: #566573;
         }
 
+        .hero-temp.thunderstorm {
+            background-color: #1c2833; /* Very Dark Storm */
+        }
         .hero-temp.thunderstorm::before {
-            /* Stormy clouds */
-            background-image: url('');
-            background-color: #1f2937; /* Tailwind gray-800 as fallback */
+            /* Deep purple/black for storms */
+            background: linear-gradient(135deg, #2c3e50 0%, #4a196e 100%);
+            opacity: 1;
+            border-color: #2c3e50;
         }
-        
+
+        .hero-temp.snow {
+            background-color: #bdc3c7; /* Light Gray/White for Snow */
+        }
         .hero-temp.snow::before {
-            /* Snowy landscape */
-            background-image: url('');
-            background-color: #d1d5db; /* Tailwind gray-300 as fallback */
+            /* Soft white/blue mix for snowy conditions */
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            opacity: 1;
+            border-color: #ecf0f1;
         }
 
+        .hero-temp.fog {
+            background-color: #aeb6bf; /* Misty Light Gray */
+        }
         .hero-temp.fog::before {
-            /* Misty/Foggy scene */
-            background-image: url('');
-            background-color: #a1a1aa; /* Tailwind zinc-400 as fallback */
+            /* Flat misty gray */
+            background: linear-gradient(135deg, #bdc3c7 0%, #aeb6bf 100%);
+            opacity: 1;
+            border-color: #bdc3c7;
         }
 
-        .hero-temp.light-fog::before {
-            /* Lighter mist */
-            background-image: url('');
-            background-color: #e4e4e7; /* Tailwind zinc-200 as fallback */
-        }
-        
-        /* End of Dynamic Background Styles */
-        }
-
+        /* * --- TEXT CENTERING FIX ---
+         * Separate the number from the degree symbol to center the condition text correctly.
+         * The degree symbol is now its own element, allowing the main number to be centered.
+         */
         .hero-temp-content {
             position: relative;
             z-index: 1;
+            /* Use flex to align the temp components */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .temp-display {
+            display: flex;
+            align-items: flex-start; /* Align degree symbol to the top right of the number */
+            justify-content: center; /* Center the whole temp display */
         }
 
         .hero-temp-value {
@@ -240,17 +277,26 @@
             font-weight: 200;
             color: #fff;
             line-height: 1;
-            margin-bottom: 10px;
             text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            margin-right: 0px; /* Reset margin from the old rule */
         }
 
+        .degree-symbol {
+            font-size: 60px; /* Smaller, superscript look */
+            font-weight: 200;
+            color: #fff;
+            line-height: 1;
+            margin-top: 10px; /* Raise it slightly */
+        }
+        
         .hero-temp-condition {
             font-size: 24px;
             color: #fff;
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-top: -10px; /* Pull it closer to the number */
             margin-bottom: 5px;
-            margin-left: -1ch; /* ADD THIS LINE or replace the old one */
+            text-align: center; /* Ensure this is centered under the *number* */
         }
 
         .hero-temp-feels {
@@ -258,8 +304,9 @@
             color: rgba(255,255,255,0.9);
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-left: -1ch; /* ADD THIS LINE or replace the old one */
         }
+
+        /* --- Rest of the existing CSS (omitted for brevity but assumed to be present) --- */
 
         .current-weather {
             background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(52, 73, 94, 0.05) 100%), #1a1a1a;
