@@ -522,14 +522,6 @@
             font-weight: 700;
         }
 
-        .day-temp-high .day-temp-value {
-            color: #e74c3c;
-        }
-
-        .day-temp-low .day-temp-value {
-            color: #3498db;
-        }
-
         .day-card-stats {
             display: grid;
             gap: 8px;
@@ -563,10 +555,6 @@
 
         .day-stat-value.wind {
             color: #f39c12;
-        }
-
-        .day-stat-value.feels {
-            color: #9b59b6;
         }
 
         .day-rain-time {
@@ -1785,7 +1773,7 @@
                 }
             }
 
-            // Extra rows
+            // Extra rows (Feels Like and Wind Gusts)
             html += '<div class="extra-rows" id="heatmapExtraRows">';
 
             // Feels Like row (in expandable section, between temp and conditions)
@@ -1834,7 +1822,7 @@
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell precip-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${prob}%</div></div>`;
+                    html += `<div class="heatmap-cell precip-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${prob}%</div></div>`;
                 } else {
                     html += '<div class="heatmap-cell precip-cell" style="opacity: 0.05;">--</div>';
                 }
@@ -1852,16 +1840,13 @@
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${wind}<div class="cell-sub">mph</div></div></div>`;
+                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${wind}<div class="cell-sub"  style="color: #fff;">mph</div></div></div>`;
                 } else {
                     html += '<div class="heatmap-cell wind-cell" style="opacity: 0.2;">--</div>';
                 }
             }
 
-            // Extra rows (just Wind Gusts now)
-            html += '<div class="extra-rows" id="heatmapExtraRows">';
-
-            // Wind Gusts row
+            // Wind Gusts row (still in extra-rows section)
             html += '<div class="heatmap-label">Wind Gusts</div>';
             const gusts = todayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
             const maxGust = Math.max(...gusts);
@@ -1873,7 +1858,7 @@
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${gust}<div class="cell-sub">mph</div></div></div>`;
+                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${gust}<div class="cell-sub" style="color: #fff;">mph</div></div></div>`;
                 } else {
                     html += '<div class="heatmap-cell wind-cell" style="opacity: 0.2;">--</div>';
                 }
@@ -1959,8 +1944,17 @@
             let html = '';
             cards.forEach(card => {
                 const todayClass = card.dayOffset === 0 ? 'today' : '';
+                const highColor = getTempClass(card.highTemp);
+                const lowColor = getTempClass(card.lowTemp);
+                const highFeelsColor = getTempClass(card.highFeels);
+                const lowFeelsColor = getTempClass(card.lowFeels);
+                
+                // Calculate average temp for card background
+                const avgTemp = (card.highTemp + card.lowTemp) / 2;
+                const bgColor = getTempClass(avgTemp);
+                
                 html += `
-                    <div class="day-card ${todayClass}" onclick="openHourlyModal(${card.dayOffset})">
+                    <div class="day-card ${todayClass}" onclick="openHourlyModal(${card.dayOffset})" style="background: linear-gradient(135deg, ${bgColor}15 0%, ${bgColor}05 100%);">
                         <div class="day-card-header">
                             <div>
                                 <div class="day-card-day">${card.dayName}</div>
@@ -1974,11 +1968,11 @@
                         <div class="day-card-temps">
                             <div class="day-temp-high">
                                 <div class="day-temp-label">High</div>
-                                <div class="day-temp-value">${card.highTemp}°</div>
+                                <div class="day-temp-value" style="color: ${highColor};">${card.highTemp}°</div>
                             </div>
                             <div class="day-temp-low">
                                 <div class="day-temp-label">Low</div>
-                                <div class="day-temp-value">${card.lowTemp}°</div>
+                                <div class="day-temp-value" style="color: ${lowColor};">${card.lowTemp}°</div>
                             </div>
                         </div>
                         <div class="day-card-stats">
@@ -1992,7 +1986,7 @@
                             </div>
                             <div class="day-stat-row">
                                 <div class="day-stat-label">🌡️ Feels Like</div>
-                                <div class="day-stat-value feels">${card.highFeels}° / ${card.lowFeels}°</div>
+                                <div class="day-stat-value feels"><span style="color: ${highFeelsColor};">${card.highFeels}°</span> / <span style="color: ${lowFeelsColor};">${card.lowFeels}°</span></div>
                             </div>
                         </div>
                     </div>
