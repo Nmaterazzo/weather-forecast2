@@ -583,6 +583,33 @@
             margin-left: 3px;
         }
 
+        /* Compact RIDGE Radar */
+        .ridge-compact-section {
+            margin-bottom: 20px;
+        }
+
+        .ridge-compact-btn {
+            padding: 5px 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #999;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .ridge-compact-btn:hover {
+            border-color: #4a90e2;
+            color: #4a90e2;
+        }
+
+        .ridge-compact-btn.active {
+            background: #4a90e2;
+            border-color: #4a90e2;
+            color: #fff;
+        }
+
         /* Hourly Modal */
         .hourly-modal {
             display: none;
@@ -813,6 +840,23 @@
                 </div>
             </div>
 
+            <!-- NOAA RIDGE Radar Compact -->
+            <div class="ridge-compact-section">
+                <div class="chart-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div class="chart-title" style="margin: 0;">NOAA RIDGE Radar</div>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="ridge-compact-btn active" id="ridgeCompactBrefBtn" onclick="switchRidgeCompact('bref')">Reflectivity</button>
+                            <button class="ridge-compact-btn" id="ridgeCompactBvelBtn" onclick="switchRidgeCompact('bvel')">Velocity</button>
+                        </div>
+                    </div>
+                    <div id="ridgeCompactContainer" style="height: 250px; position: relative; background: #0a0a0a; border-radius: 8px; overflow: hidden;">
+                        <div id="ridgeCompactMap" style="height: 100%; width: 100%;"></div>
+                        <div id="ridgeCompactStatus" style="position: absolute; top: 10px; right: 10px; background: rgba(26, 26, 26, 0.9); padding: 5px 10px; border-radius: 4px; font-size: 11px; color: #5ebd5e; z-index: 1000;">US High-Res</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Daily Forecast Cards Section -->
             <div class="daily-forecast-cards">
                 <div class="chart-card">
@@ -933,41 +977,6 @@
                     </div>
                 </div>
             </div>
-
-            <div class="radar-section">
-                <div class="chart-card">
-                    <div class="chart-title">NOAA RIDGE Radar (US High-Resolution)</div>
-                    <div id="ridgeContainer" style="height: 500px; position: relative; background: #0a0a0a; border-radius: 8px; overflow: hidden;">
-                        <div id="ridgeMap" style="height: 100%; width: 100%;"></div>
-                        <div id="ridgeControls" style="position: absolute; bottom: 20px; left: 10px; right: 10px; background: rgba(26, 26, 26, 0.9); padding: 15px; border-radius: 8px; z-index: 1000;">
-                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <button onclick="switchRidgeLayer('bref')" id="ridgeBrefBtn" class="ridge-layer-btn active" style="padding: 8px 16px; background: #4a90e2; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Reflectivity</button>
-                                <button onclick="switchRidgeLayer('bvel')" id="ridgeBvelBtn" class="ridge-layer-btn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Velocity</button>
-                                <span id="ridgeStatus" style="color: #e0e0e0; font-size: 13px;">Current Radar</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="radar-section">
-                <div class="chart-card">
-                    <div class="chart-title">OpenWeatherMap Layers</div>
-                    <div id="owmContainer" style="height: 500px; position: relative; background: #0a0a0a; border-radius: 8px; overflow: hidden;">
-                        <div id="owmMap" style="height: 100%; width: 100%;"></div>
-                        <div id="owmControls" style="position: absolute; bottom: 20px; left: 10px; right: 10px; background: rgba(26, 26, 26, 0.9); padding: 15px; border-radius: 8px; z-index: 1000;">
-                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                                <button onclick="switchOWMLayer('precipitation_new')" class="owm-layer-btn active" style="padding: 8px 16px; background: #4a90e2; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Precipitation</button>
-                                <button onclick="switchOWMLayer('clouds_new')" class="owm-layer-btn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Clouds</button>
-                                <button onclick="switchOWMLayer('temp_new')" class="owm-layer-btn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Temperature</button>
-                                <button onclick="switchOWMLayer('wind_new')" class="owm-layer-btn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Wind</button>
-                                <span id="owmStatus" style="color: #e0e0e0; font-size: 13px;">Current Conditions</span>
-                            </div>
-                            <div style="font-size: 11px; color: #999;">Note: OpenWeatherMap layers require a free API key. <a href="https://openweathermap.org/api" target="_blank" style="color: #4a90e2;">Get one here</a></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -986,11 +995,8 @@
         let radarFrames = [];
         let radarAnimationTimer = null;
         let currentFrameIndex = 0;
-        let ridgeMap = null;
-        let ridgeLayer = null;
-        let owmMap = null;
-        let owmLayer = null;
-        let currentOWMLayer = 'precipitation_new';
+        let ridgeCompactMap = null;
+        let ridgeCompactLayer = null;
 
         function setLocation(lat, lng) {
             getForecast(lat, lng);
@@ -1391,51 +1397,48 @@
 
             await loadRainViewerRadar();
             
-            // Initialize RIDGE radar
-            initRidgeRadar(lat, lng);
-            
-            // Initialize OWM radar
-            initOWMRadar(lat, lng);
+            // Initialize compact RIDGE radar
+            initRidgeCompact(lat, lng);
             
             setTimeout(() => {
                 radarMap.invalidateSize();
-                if (ridgeMap) ridgeMap.invalidateSize();
-                if (owmMap) owmMap.invalidateSize();
+                if (ridgeCompactMap) ridgeCompactMap.invalidateSize();
             }, 100);
         }
 
-        function initRidgeRadar(lat, lng) {
-            if (!ridgeMap) {
-                ridgeMap = L.map('ridgeMap').setView([lat, lng], 7);
+        function initRidgeCompact(lat, lng) {
+            if (!ridgeCompactMap) {
+                ridgeCompactMap = L.map('ridgeCompactMap').setView([lat, lng], 6);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap, &copy; CARTO',
                     maxZoom: 19
-                }).addTo(ridgeMap);
+                }).addTo(ridgeCompactMap);
             } else {
-                ridgeMap.setView([lat, lng], 7);
+                ridgeCompactMap.setView([lat, lng], 6);
             }
 
             // Add location marker
-            L.marker([lat, lng]).addTo(ridgeMap).bindPopup('Your Location');
+            L.marker([lat, lng]).addTo(ridgeCompactMap).bindPopup('Your Location');
 
             // Check if US location
             if (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66) {
-                loadRidgeLayer('bref');
-                document.getElementById('ridgeStatus').textContent = 'Current Radar - Reflectivity';
+                loadRidgeCompactLayer('bref');
+                document.getElementById('ridgeCompactStatus').textContent = 'US High-Res';
+                document.getElementById('ridgeCompactStatus').style.color = '#5ebd5e';
             } else {
-                document.getElementById('ridgeStatus').textContent = 'Outside US Coverage';
-                document.getElementById('ridgeStatus').style.color = '#e74c3c';
+                document.getElementById('ridgeCompactStatus').textContent = 'Outside US';
+                document.getElementById('ridgeCompactStatus').style.color = '#e74c3c';
             }
         }
 
-        function loadRidgeLayer(type) {
-            if (ridgeLayer) {
-                ridgeMap.removeLayer(ridgeLayer);
+        function loadRidgeCompactLayer(type) {
+            if (ridgeCompactLayer) {
+                ridgeCompactMap.removeLayer(ridgeCompactLayer);
             }
 
             const layerName = `conus_${type}_qcd`;
             
-            ridgeLayer = L.tileLayer.wms('https://opengeo.ncep.noaa.gov/geoserver/conus/' + layerName + '/ows', {
+            ridgeCompactLayer = L.tileLayer.wms('https://opengeo.ncep.noaa.gov/geoserver/conus/' + layerName + '/ows', {
                 layers: layerName,
                 format: 'image/png',
                 transparent: true,
@@ -1443,10 +1446,10 @@
                 attribution: 'NOAA/NWS'
             });
             
-            ridgeLayer.addTo(ridgeMap);
+            ridgeCompactLayer.addTo(ridgeCompactMap);
         }
 
-        function switchRidgeLayer(type) {
+        function switchRidgeCompact(type) {
             if (!currentLatLng) return;
             
             // Check if US location
@@ -1454,67 +1457,13 @@
                 return;
             }
 
-            loadRidgeLayer(type);
-            
-            const name = type === 'bref' ? 'Reflectivity' : 'Velocity';
-            document.getElementById('ridgeStatus').textContent = 'Current Radar - ' + name;
-            document.getElementById('ridgeStatus').style.color = '#e0e0e0';
+            loadRidgeCompactLayer(type);
             
             // Update button states
-            document.querySelectorAll('.ridge-layer-btn').forEach(btn => {
-                btn.style.background = '#666';
+            document.querySelectorAll('.ridge-compact-btn').forEach(btn => {
+                btn.classList.remove('active');
             });
-            document.getElementById('ridge' + type.charAt(0).toUpperCase() + type.slice(1) + 'Btn').style.background = '#4a90e2';
-        }
-
-        function initOWMRadar(lat, lng) {
-            if (!owmMap) {
-                owmMap = L.map('owmMap').setView([lat, lng], 7);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap, &copy; CARTO',
-                    maxZoom: 19
-                }).addTo(owmMap);
-            } else {
-                owmMap.setView([lat, lng], 7);
-            }
-
-            // Add location marker
-            L.marker([lat, lng]).addTo(owmMap).bindPopup('Your Location');
-
-            // Note: OWM requires API key - this won't work without one
-            // Users can get a free key at openweathermap.org
-            document.getElementById('owmStatus').textContent = 'Requires API Key';
-            document.getElementById('owmStatus').style.color = '#e74c3c';
-        }
-
-        function switchOWMLayer(layer) {
-            currentOWMLayer = layer;
-            
-            const layerNames = {
-                'precipitation_new': 'Precipitation',
-                'clouds_new': 'Clouds',
-                'temp_new': 'Temperature',
-                'wind_new': 'Wind'
-            };
-            
-            document.getElementById('owmStatus').textContent = layerNames[layer] + ' - Requires API Key';
-            
-            // Update button states
-            document.querySelectorAll('.owm-layer-btn').forEach(btn => {
-                btn.style.background = '#666';
-            });
-            event.target.style.background = '#4a90e2';
-            
-            // If user has an API key, they can add it here:
-            // const apiKey = 'YOUR_API_KEY_HERE';
-            // if (owmLayer) owmMap.removeLayer(owmLayer);
-            // owmLayer = L.tileLayer(`https://tile.openweathermap.org/map/${layer}/{z}/{x}/{y}.png?appid=${apiKey}`, {
-            //     opacity: 0.7,
-            //     attribution: 'OpenWeatherMap'
-            // });
-            // owmLayer.addTo(owmMap);
-            // document.getElementById('owmStatus').textContent = layerNames[layer];
-            // document.getElementById('owmStatus').style.color = '#5ebd5e';
+            document.getElementById('ridgeCompact' + type.charAt(0).toUpperCase() + type.slice(1) + 'Btn').classList.add('active');
         }
 
         async function loadRainViewerRadar() {
