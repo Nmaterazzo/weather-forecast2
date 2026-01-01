@@ -120,47 +120,47 @@
 
         .current-weather {
             background: #1a1a1a;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
             border: 1px solid #2a2a2a;
         }
 
         .location-header {
-            margin-bottom: 20px;
+            margin-bottom: 6px;
         }
 
         .location-name {
-            font-size: 24px;
+            font-size: 12px;
             color: #fff;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .model-name {
             color: #4a90e2;
-            font-size: 14px;
+            font-size: 9px;
         }
 
         .current-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 5px;
         }
 
         .current-item {
             background: #252525;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 6px;
+            border-radius: 4px;
         }
 
         .current-label {
-            font-size: 13px;
+            font-size: 8px;
             color: #999;
-            margin-bottom: 8px;
+            margin-bottom: 3px;
         }
 
         .current-value {
-            font-size: 32px;
+            font-size: 12px;
             font-weight: 700;
             color: #fff;
         }
@@ -191,7 +191,7 @@
         }
 
         .chart-title {
-            font-size: 14px;
+            font-size: 12px;
             margin-bottom: 10px;
             color: #fff;
         }
@@ -326,9 +326,9 @@
 
         .heatmap {
             display: grid;
-            grid-template-columns: 60px repeat(24, 32px);
+            grid-template-columns: 61px repeat(24, 33px);
             gap: 1px;
-            min-width: 828px;
+            min-width: 853px;
         }
 
         .heatmap-label {
@@ -365,7 +365,7 @@
         }
 
         .heatmap-cell {
-            height: 32px;
+            height: 33px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -392,7 +392,7 @@
         }
 
         .cell-main {
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
         }
 
@@ -637,12 +637,12 @@
         .hourly-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .hourly-table th {
             background: #252525;
-            padding: 12px 8px;
+            padding: 10px 6px;
             text-align: left;
             color: #999;
             font-weight: 600;
@@ -652,7 +652,7 @@
         }
 
         .hourly-table td {
-            padding: 10px 8px;
+            padding: 8px 6px;
             border-bottom: 1px solid #2a2a2a;
         }
 
@@ -684,12 +684,12 @@
         .hourly-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .hourly-table th {
             background: #252525;
-            padding: 12px 8px;
+            padding: 10px 6px;
             text-align: left;
             color: #999;
             font-weight: 600;
@@ -699,7 +699,7 @@
         }
 
         .hourly-table td {
-            padding: 10px 8px;
+            padding: 8px 6px;
             border-bottom: 1px solid #2a2a2a;
         }
 
@@ -872,7 +872,7 @@
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div class="chart-title" style="margin: 0;">Temperature & Feels Like Forecast</div>
-                        <select id="timeRange" onchange="updateCharts()" style="padding: 8px 12px; background: #252525; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 14px;">
+                        <select id="timeRange" onchange="updateCharts()" style="padding: 8px 12px; background: #252525; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 12px;">
                             <option value="24">24 Hours (Weather.gov + Best Match)</option>
                             <option value="48" selected>48 Hours (+ ECMWF)</option>
                             <option value="72">72 Hours (+ GFS)</option>
@@ -919,7 +919,7 @@
 
                 <div class="chart-card">
                     <div class="chart-title">Precipitation Accumulation</div>
-                    <div id="precipTotals" style="font-size: 14px; color: #999; margin-bottom: 15px;">--</div>
+                    <div id="precipTotals" style="font-size: 12px; color: #999; margin-bottom: 15px;">--</div>
                     <div class="chart-wrapper">
                         <canvas id="precipAccumChart"></canvas>
                     </div>
@@ -953,7 +953,7 @@
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                                 <button onclick="playRadarAnimation()" id="playBtn" style="padding: 8px 16px; background: #4a90e2; border: none; border-radius: 6px; color: #fff; cursor: pointer;">Play</button>
                                 <button onclick="pauseRadarAnimation()" id="pauseBtn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer;">Pause</button>
-                                <span id="radarTimeDisplay" style="color: #e0e0e0; font-size: 14px;">--</span>
+                                <span id="radarTimeDisplay" style="color: #e0e0e0; font-size: 12px;">--</span>
                             </div>
                             <input type="range" id="radarSlider" min="0" max="0" value="0" style="width: 100%;" oninput="updateRadarFrame(this.value)">
                         </div>
@@ -1757,7 +1757,7 @@
             }
 
             // Row 1: Conditions (visible by default)
-            html += '<div class="heatmap-label">Conditions</div>';
+            html += '<div class="heatmap-label">Conds.</div>';
             for (let hour = 0; hour < 24; hour++) {
                 if (hour < todayIndices.length) {
                     const idx = todayIndices[hour];
@@ -1773,7 +1773,7 @@
             }
 
             // Row 2: Temperature (visible by default)
-            html += '<div class="heatmap-label">Temperature</div>';
+            html += '<div class="heatmap-label">Temp.</div>';
             for (let hour = 0; hour < 24; hour++) {
                 if (hour < todayIndices.length) {
                     const idx = todayIndices[hour];
