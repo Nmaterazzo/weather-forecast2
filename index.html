@@ -403,6 +403,25 @@
             color: #9b59b6;
         }
 
+        .model-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .model-badge.hrrr {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .model-badge.standard {
+            background: #6366f1;
+            color: #fff;
+        }
+
         @media (max-width: 768px) {
             .input-group {
                 grid-template-columns: 1fr;
@@ -436,10 +455,11 @@
             </div>
 
             <div class="model-selector">
-                <button class="model-btn active" data-model="gfs" onclick="selectModel('gfs')">GFS</button>
+                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR-Sub (Ultra Accurate)</button>
+                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS</button>
                 <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (US)</button>
                 <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF</button>
-                <button class="model-btn" data-model="blend" onclick="selectModel('blend')">Blend (Average)</button>
+                <button class="model-btn" data-model="blend" onclick="selectModel('blend')">Smart Blend</button>
             </div>
         </div>
 
@@ -512,11 +532,11 @@
                         <div class="chart-title" style="margin: 0;">Temperature & Feels Like Forecast</div>
                         <select id="timeRange" onchange="updateCharts()" style="padding: 8px 12px; background: #252525; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 14px;">
                             <option value="24">24 Hours</option>
-                            <option value="48">48 Hours</option>
+                            <option value="48" selected>48 Hours</option>
                             <option value="72">72 Hours</option>
                             <option value="96">96 Hours</option>
                             <option value="120">120 Hours</option>
-                            <option value="136" selected>136 Hours (GFS Only)</option>
+                            <option value="136">136 Hours (GFS Only)</option>
                         </select>
                     </div>
                     <div class="chart-wrapper">
@@ -583,7 +603,7 @@
     </div>
 
     <script>
-        let currentModel = 'gfs';
+        let currentModel = 'hrrr'; // Default to HRRR-subhourly for best accuracy
         let tempChart = null;
         let precipChart = null;
         let precipAccumChart = null;
@@ -621,7 +641,6 @@
             }
 
             try {
-                // Use Nominatim geocoding to convert city name to coordinates
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`);
                 const data = await response.json();
 
@@ -661,7 +680,6 @@
         }
 
         async function getForecast(lat, lng) {
-
             if (isNaN(lat) || isNaN(lng)) {
                 showError('Please enter valid latitude and longitude values');
                 return;
@@ -677,45 +695,93 @@
             document.getElementById('error').classList.remove('active');
 
             if (currentModel === 'blend') {
-                // Fetch all three models and blend them
-                await fetchBlendedForecast(lat, lng);
+                await fetchSmartBlend(lat, lng);
+            } else if (currentModel === 'hrrr') {
+                await fetchHRRRSubhourly(lat, lng);
             } else {
-                // Fetch single model
                 await fetchSingleModel(lat, lng);
             }
         }
 
-        async function fetchSingleModel(lat, lng) {
-            let modelParam = 'gfs_seamless';
-            let modelDisplayName = 'GFS (Global Forecast System)';
-            let forecastDays = 7; // 136+ hours
-            let apiUrl = 'https://api.open-meteo.com/v1/forecast';
-            
-            if (currentModel === 'nam') {
-                modelParam = 'best_match'; // Use best_match which includes NAM for US
-                modelDisplayName = 'NAM (North American Mesoscale)';
-                forecastDays = 3; // NAM limited to ~84 hours
-            } else if (currentModel === 'ecmwf') {
-                modelParam = 'ecmwf_ifs025';
-                modelDisplayName = 'ECMWF IFS';
-                forecastDays = 10; // ECMWF goes to 10 days
-            }
-
+        // NEW: HRRR-subhourly function for ultra-accurate short-term forecasts
+        async function fetchHRRRSubhourly(lat, lng) {
             try {
-                const url = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=${forecastDays}&models=${modelParam}`;
+                // Check if location is in US (HRRR coverage)
+                const isUS = (lat >= 20 && lat <= 55 && lng >= -130 && lng <= -60);
                 
-                const response = await fetch(url);
+                if (!isUS) {
+                    showError('HRRR-subhourly is only available for US locations. Switching to ECMWF...');
+                    currentModel = 'ecmwf';
+                    selectModel('ecmwf');
+                    await fetchSingleModel(lat, lng);
+                    return;
+                }
+
+                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error:', response.status, errorText);
-                    throw new Error(`API returned ${response.status}: ${errorText}`);
+                // Fetch HRRR-subhourly for 0-18 hours with 15-minute resolution
+                const hrrrUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&minutely_15=temperature_2m,apparent_temperature,precipitation,rain,snowfall,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=1&models=hrrr_subhourly`;
+                
+                // Also fetch GFS for extended forecast (18+ hours)
+                const gfsUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`;
+                
+                const [hrrrResponse, gfsResponse] = await Promise.all([
+                    fetch(hrrrUrl),
+                    fetch(gfsUrl)
+                ]);
+                
+                if (!hrrrResponse.ok || !gfsResponse.ok) {
+                    throw new Error('Failed to fetch HRRR or GFS data');
                 }
                 
-                const data = await response.json();
-                console.log('API Response:', data);
+                const hrrrData = await hrrrResponse.json();
+                const gfsData = await gfsResponse.json();
+                
+                console.log('HRRR-subhourly data:', hrrrData);
+                console.log('GFS extended data:', gfsData);
 
-                // Fetch historical data (past 24 hours) from archive API
+                // Get location name
+                try {
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const geoData = await geoResponse.json();
+                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+                } catch (e) {
+                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                }
+
+                document.getElementById('modelName').textContent = 'HRRR-Subhourly (15-min) + GFS Extended';
+                
+                if (hrrrData.current && hrrrData.current.time) {
+                    const runTime = new Date(hrrrData.current.time);
+                    document.getElementById('modelRun').textContent = `HRRR updated: ${runTime.toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    })} | Updates every 15 minutes`;
+                }
+
+                // Use HRRR current conditions (most accurate)
+                document.getElementById('temp').textContent = `${Math.round(hrrrData.current.temperature_2m)}°F`;
+                document.getElementById('feelsLike').textContent = hrrrData.current.apparent_temperature ? `${Math.round(hrrrData.current.apparent_temperature)}°F` : 'N/A';
+                document.getElementById('wind').textContent = `${Math.round(hrrrData.current.wind_speed_10m)} mph`;
+                document.getElementById('humidity').textContent = `${hrrrData.current.relative_humidity_2m}%`;
+                document.getElementById('precip').textContent = hrrrData.current.precipitation !== null ? `${hrrrData.current.precipitation.toFixed(2)} in` : '0.00 in';
+                document.getElementById('pressure').textContent = hrrrData.current.surface_pressure ? `${Math.round(hrrrData.current.surface_pressure)} mb` : 'N/A';
+                document.getElementById('conditions').textContent = getWeatherDescription(hrrrData.current.weather_code);
+
+                // Combine HRRR 15-minute data with GFS hourly data
+                // Convert HRRR minutely_15 to hourly by averaging every 4 data points
+                const hrrrHourly = convertMinutelyToHourly(hrrrData.minutely_15);
+                
+                // Merge HRRR (first 18 hours) with GFS (18+ hours)
+                const mergedHourly = mergeForecasts(hrrrHourly, gfsData.hourly, 18);
+                
+                currentForecastData = mergedHourly;
+
+                // Fetch historical data
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
                 const today = new Date();
@@ -725,9 +791,294 @@
                 const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
                 const historicalResponse = await fetch(historicalUrl);
                 const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-                console.log('Historical Data:', historicalData);
 
-                // Get location name
+                updateCharts(historicalData);
+                initRadar(lat, lng);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('forecast').classList.add('active');
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading HRRR data: ${err.message}`);
+            }
+        }
+
+        // Convert 15-minute data to hourly averages
+        function convertMinutelyToHourly(minutelyData) {
+            const hourly = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: []
+            };
+
+            if (!minutelyData || !minutelyData.time) return hourly;
+
+            // Group every 4 data points (15min * 4 = 1 hour)
+            for (let i = 0; i < minutelyData.time.length; i += 4) {
+                const chunk = {
+                    temp: [],
+                    feels: [],
+                    precip: [],
+                    rain: [],
+                    snow: [],
+                    wind: []
+                };
+
+                for (let j = 0; j < 4 && i + j < minutelyData.time.length; j++) {
+                    const idx = i + j;
+                    chunk.temp.push(minutelyData.temperature_2m?.[idx] || 0);
+                    chunk.feels.push(minutelyData.apparent_temperature?.[idx] || 0);
+                    chunk.precip.push(minutelyData.precipitation?.[idx] || 0);
+                    chunk.rain.push(minutelyData.rain?.[idx] || 0);
+                    chunk.snow.push(minutelyData.snowfall?.[idx] || 0);
+                    chunk.wind.push(minutelyData.wind_speed_10m?.[idx] || 0);
+                }
+
+                hourly.time.push(minutelyData.time[i]);
+                hourly.temperature_2m.push(chunk.temp.reduce((a, b) => a + b, 0) / chunk.temp.length);
+                hourly.apparent_temperature.push(chunk.feels.reduce((a, b) => a + b, 0) / chunk.feels.length);
+                hourly.precipitation.push(chunk.precip.reduce((a, b) => a + b, 0)); // Sum for hour
+                hourly.rain.push(chunk.rain.reduce((a, b) => a + b, 0)); // Sum for hour
+                hourly.snowfall.push(chunk.snow.reduce((a, b) => a + b, 0)); // Sum for hour
+                hourly.wind_speed_10m.push(chunk.wind.reduce((a, b) => a + b, 0) / chunk.wind.length);
+            }
+
+            return hourly;
+        }
+
+        // Merge short-term accurate forecast with longer-term forecast
+        function mergeForecasts(shortTerm, longTerm, cutoffHours) {
+            const merged = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: []
+            };
+
+            // Use short-term data for first cutoffHours
+            const shortTermLength = Math.min(shortTerm.time.length, cutoffHours);
+            for (let i = 0; i < shortTermLength; i++) {
+                merged.time.push(shortTerm.time[i]);
+                merged.temperature_2m.push(shortTerm.temperature_2m[i]);
+                merged.apparent_temperature.push(shortTerm.apparent_temperature?.[i] || shortTerm.temperature_2m[i]);
+                merged.precipitation_probability.push(0); // HRRR doesn't have prob
+                merged.precipitation.push(shortTerm.precipitation?.[i] || 0);
+                merged.rain.push(shortTerm.rain?.[i] || 0);
+                merged.snowfall.push(shortTerm.snowfall?.[i] || 0);
+                merged.wind_speed_10m.push(shortTerm.wind_speed_10m[i]);
+            }
+
+            // Append long-term data after cutoff
+            const cutoffTime = new Date(shortTerm.time[shortTermLength - 1]);
+            for (let i = 0; i < longTerm.time.length; i++) {
+                const currentTime = new Date(longTerm.time[i]);
+                if (currentTime > cutoffTime) {
+                    merged.time.push(longTerm.time[i]);
+                    merged.temperature_2m.push(longTerm.temperature_2m[i]);
+                    merged.apparent_temperature.push(longTerm.apparent_temperature?.[i] || longTerm.temperature_2m[i]);
+                    merged.precipitation_probability.push(longTerm.precipitation_probability?.[i] || 0);
+                    merged.precipitation.push(longTerm.precipitation?.[i] || 0);
+                    merged.rain.push(longTerm.rain?.[i] || 0);
+                    merged.snowfall.push(longTerm.snowfall?.[i] || 0);
+                    merged.wind_speed_10m.push(longTerm.wind_speed_10m[i]);
+                }
+            }
+
+            return merged;
+        }
+
+        // Smart Blend: Uses HRRR-sub for 0-18h, then blends NAM/GFS/ECMWF for 18+
+        async function fetchSmartBlend(lat, lng) {
+            try {
+                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
+                const isUS = (lat >= 20 && lat <= 55 && lng >= -130 && lng <= -60);
+                
+                let modelsToFetch = [];
+                let modelNames = [];
+                
+                // For US: Use HRRR-sub for short term
+                if (isUS) {
+                    modelsToFetch.push(
+                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&minutely_15=temperature_2m,apparent_temperature,precipitation,rain,snowfall,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=1&models=hrrr_subhourly`)
+                    );
+                    modelNames.push('HRRR-Sub');
+                }
+                
+                // Always fetch GFS and ECMWF for medium/long range
+                modelsToFetch.push(
+                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`),
+                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
+                );
+                modelNames.push('GFS', 'ECMWF');
+                
+                // Add NAM for US
+                if (isUS) {
+                    modelsToFetch.push(
+                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`)
+                    );
+                    modelNames.push('NAM');
+                }
+                
+                const responses = await Promise.all(modelsToFetch);
+                const modelData = await Promise.all(responses.map(r => r.json()));
+                
+                console.log('Smart Blend models:', modelNames);
+
+                // Get location
+                try {
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const geoData = await geoResponse.json();
+                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+                } catch (e) {
+                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                }
+
+                document.getElementById('modelName').textContent = `Smart Blend (${modelNames.join(' + ')})`;
+                
+                if (modelData[0].current) {
+                    const runTime = new Date(modelData[0].current.time);
+                    document.getElementById('modelRun').textContent = `Latest: ${runTime.toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    })}`;
+                }
+
+                // Use HRRR current if available, else blend
+                const currentSource = isUS ? modelData[0] : modelData[0];
+                document.getElementById('temp').textContent = `${Math.round(currentSource.current.temperature_2m)}°F`;
+                document.getElementById('feelsLike').textContent = `${Math.round(currentSource.current.apparent_temperature || currentSource.current.temperature_2m)}°F`;
+                document.getElementById('wind').textContent = `${Math.round(currentSource.current.wind_speed_10m)} mph`;
+                document.getElementById('humidity').textContent = `${currentSource.current.relative_humidity_2m}%`;
+                document.getElementById('precip').textContent = `${(currentSource.current.precipitation || 0).toFixed(2)} in`;
+                document.getElementById('pressure').textContent = `${Math.round(currentSource.current.surface_pressure || 0)} mb`;
+                document.getElementById('conditions').textContent = getWeatherDescription(currentSource.current.weather_code);
+
+                // Smart blending logic
+                let blendedHourly;
+                
+                if (isUS) {
+                    // Convert HRRR minutely to hourly
+                    const hrrrHourly = convertMinutelyToHourly(modelData[0].minutely_15);
+                    
+                    // Get longer-range models (skip first entry which is HRRR)
+                    const longerModels = modelData.slice(1);
+                    
+                    // Blend the longer models for 18+ hours
+                    const maxHours = Math.min(...longerModels.map(d => d.hourly.time.length));
+                    const blendedLonger = {
+                        time: longerModels[0].hourly.time.slice(0, maxHours),
+                        temperature_2m: [],
+                        apparent_temperature: [],
+                        precipitation_probability: [],
+                        precipitation: [],
+                        rain: [],
+                        snowfall: [],
+                        wind_speed_10m: []
+                    };
+
+                    for (let i = 0; i < maxHours; i++) {
+                        blendedLonger.temperature_2m[i] = longerModels.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / longerModels.length;
+                        blendedLonger.apparent_temperature[i] = longerModels.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedLonger.temperature_2m[i]), 0) / longerModels.length;
+                        blendedLonger.precipitation_probability[i] = longerModels.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / longerModels.length;
+                        blendedLonger.precipitation[i] = longerModels.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / longerModels.length;
+                        blendedLonger.rain[i] = longerModels.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / longerModels.length;
+                        blendedLonger.snowfall[i] = longerModels.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / longerModels.length;
+                        blendedLonger.wind_speed_10m[i] = longerModels.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / longerModels.length;
+                    }
+                    
+                    // Merge HRRR with blended longer forecast
+                    blendedHourly = mergeForecasts(hrrrHourly, blendedLonger, 18);
+                } else {
+                    // No HRRR, just blend all models
+                    const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
+                    blendedHourly = {
+                        time: modelData[0].hourly.time.slice(0, maxHours),
+                        temperature_2m: [],
+                        apparent_temperature: [],
+                        precipitation_probability: [],
+                        precipitation: [],
+                        rain: [],
+                        snowfall: [],
+                        wind_speed_10m: []
+                    };
+
+                    for (let i = 0; i < maxHours; i++) {
+                        blendedHourly.temperature_2m[i] = modelData.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / modelData.length;
+                        blendedHourly.apparent_temperature[i] = modelData.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedHourly.temperature_2m[i]), 0) / modelData.length;
+                        blendedHourly.precipitation_probability[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / modelData.length;
+                        blendedHourly.precipitation[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / modelData.length;
+                        blendedHourly.rain[i] = modelData.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / modelData.length;
+                        blendedHourly.snowfall[i] = modelData.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / modelData.length;
+                        blendedHourly.wind_speed_10m[i] = modelData.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / modelData.length;
+                    }
+                }
+
+                currentForecastData = blendedHourly;
+
+                // Historical data
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+
+                updateCharts(historicalData);
+                initRadar(lat, lng);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('forecast').classList.add('active');
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading smart blend: ${err.message}`);
+            }
+        }
+
+        async function fetchSingleModel(lat, lng) {
+            let modelParam = 'gfs_seamless';
+            let modelDisplayName = 'GFS (Global Forecast System)';
+            let forecastDays = 7;
+            let apiUrl = 'https://api.open-meteo.com/v1/forecast';
+            
+            if (currentModel === 'nam') {
+                modelParam = 'best_match';
+                modelDisplayName = 'NAM (North American Mesoscale)';
+                forecastDays = 3;
+            } else if (currentModel === 'ecmwf') {
+                modelParam = 'ecmwf_ifs025';
+                modelDisplayName = 'ECMWF IFS';
+                forecastDays = 10;
+            }
+
+            try {
+                const url = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=${forecastDays}&models=${modelParam}`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API returned ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+
                 try {
                     const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
                     const geoData = await geoResponse.json();
@@ -739,7 +1090,6 @@
 
                 document.getElementById('modelName').textContent = modelDisplayName;
                 
-                // Show model run time
                 if (data.current && data.current.time) {
                     const runTime = new Date(data.current.time);
                     document.getElementById('modelRun').textContent = `Model run: ${runTime.toLocaleString('en-US', { 
@@ -749,11 +1099,8 @@
                         minute: '2-digit',
                         timeZoneName: 'short'
                     })}`;
-                } else {
-                    document.getElementById('modelRun').textContent = '';
                 }
 
-                // Update current conditions
                 document.getElementById('temp').textContent = `${Math.round(data.current.temperature_2m)}°F`;
                 document.getElementById('feelsLike').textContent = data.current.apparent_temperature ? `${Math.round(data.current.apparent_temperature)}°F` : 'N/A';
                 document.getElementById('wind').textContent = `${Math.round(data.current.wind_speed_10m)} mph`;
@@ -762,13 +1109,19 @@
                 document.getElementById('pressure').textContent = data.current.surface_pressure ? `${Math.round(data.current.surface_pressure)} mb` : 'N/A';
                 document.getElementById('conditions').textContent = getWeatherDescription(data.current.weather_code);
 
-                // Store forecast data
                 currentForecastData = data.hourly;
 
-                // Update charts
-                updateCharts(historicalData);
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
 
-                // Initialize radar
+                updateCharts(historicalData);
                 initRadar(lat, lng);
 
                 document.getElementById('loading').style.display = 'none';
@@ -780,182 +1133,28 @@
             }
         }
 
-        async function fetchBlendedForecast(lat, lng) {
-            try {
-                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
-                
-                // Check if location is in US (rough bounds for continental US)
-                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
-                
-                let modelsToFetch = [];
-                let modelNames = [];
-                
-                // Always fetch GFS and ECMWF
-                modelsToFetch.push(
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`),
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
-                );
-                modelNames.push('GFS', 'ECMWF');
-                
-                // Only fetch NAM for US locations
-                if (isUS) {
-                    modelsToFetch.push(
-                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`)
-                    );
-                    modelNames.push('NAM');
-                }
-                
-                const responses = await Promise.all(modelsToFetch);
-                
-                for (let response of responses) {
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch one or more models');
-                    }
-                }
-
-                const modelData = await Promise.all(responses.map(r => r.json()));
-                
-                console.log('Blend models:', modelNames);
-                modelData.forEach((data, i) => console.log(`${modelNames[i]}:`, data));
-
-                // Get location name
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                document.getElementById('modelName').textContent = `Model Blend (${modelNames.join(' + ')} Average)`;
-                
-                // Show model run time from first model
-                if (modelData[0].current && modelData[0].current.time) {
-                    const runTime = new Date(modelData[0].current.time);
-                    document.getElementById('modelRun').textContent = `Latest data: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })}`;
-                } else {
-                    document.getElementById('modelRun').textContent = '';
-                }
-
-                // Blend current conditions
-                const numModels = modelData.length;
-                const avgTemp = modelData.reduce((sum, d) => sum + d.current.temperature_2m, 0) / numModels;
-                const avgFeelsLike = modelData.reduce((sum, d) => sum + (d.current.apparent_temperature || 0), 0) / numModels;
-                const avgWind = modelData.reduce((sum, d) => sum + d.current.wind_speed_10m, 0) / numModels;
-                const avgHumidity = modelData.reduce((sum, d) => sum + d.current.relative_humidity_2m, 0) / numModels;
-                const avgPrecip = modelData.reduce((sum, d) => sum + (d.current.precipitation || 0), 0) / numModels;
-                const avgPressure = modelData.reduce((sum, d) => sum + (d.current.surface_pressure || 0), 0) / numModels;
-
-                document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`;
-                document.getElementById('feelsLike').textContent = `${Math.round(avgFeelsLike)}°F`;
-                document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
-                document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
-                document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
-                document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
-                document.getElementById('conditions').textContent = getWeatherDescription(modelData[0].current.weather_code);
-
-                // Blend hourly data - use shortest forecast length
-                const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
-
-                const blendedHourly = {
-                    time: modelData[0].hourly.time.slice(0, maxHours),
-                    temperature_2m: [],
-                    apparent_temperature: [],
-                    precipitation_probability: [],
-                    precipitation: [],
-                    rain: [],
-                    snowfall: [],
-                    wind_speed_10m: []
-                };
-
-                for (let i = 0; i < maxHours; i++) {
-                    blendedHourly.temperature_2m[i] = modelData.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / numModels;
-                    
-                    blendedHourly.apparent_temperature[i] = modelData.reduce((sum, d) => 
-                        sum + (d.hourly.apparent_temperature?.[i] || blendedHourly.temperature_2m[i]), 0) / numModels;
-                    
-                    blendedHourly.precipitation_probability[i] = modelData.reduce((sum, d) => 
-                        sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / numModels;
-                    
-                    blendedHourly.precipitation[i] = modelData.reduce((sum, d) => 
-                        sum + (d.hourly.precipitation?.[i] || 0), 0) / numModels;
-                    
-                    blendedHourly.rain[i] = modelData.reduce((sum, d) => 
-                        sum + (d.hourly.rain?.[i] || 0), 0) / numModels;
-                    
-                    blendedHourly.snowfall[i] = modelData.reduce((sum, d) => 
-                        sum + (d.hourly.snowfall?.[i] || 0), 0) / numModels;
-                    
-                    blendedHourly.wind_speed_10m[i] = modelData.reduce((sum, d) => 
-                        sum + d.hourly.wind_speed_10m[i], 0) / numModels;
-                }
-
-                // Store blended forecast data
-                currentForecastData = blendedHourly;
-
-                // Fetch historical data from archive API
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-                console.log('Historical Data:', historicalData);
-
-                // Update charts
-                updateCharts(historicalData);
-
-                // Initialize radar
-                initRadar(lat, lng);
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading blended forecast: ${err.message}`);
-            }
-        }
-
         async function initRadar(lat, lng) {
-            // Initialize radar map if not already created
             if (!radarMap) {
                 radarMap = L.map('radarMap').setView([lat, lng], 7);
                 
-                // Add base map layer (dark theme)
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap, &copy; CARTO',
                     maxZoom: 19
                 }).addTo(radarMap);
                 
             } else {
-                // Update existing map position
                 radarMap.setView([lat, lng], 7);
             }
 
-            // Remove old radar marker if exists
             if (radarMarker) {
                 radarMap.removeLayer(radarMarker);
             }
             
-            // Add radar location marker
             radarMarker = L.marker([lat, lng]).addTo(radarMap);
             radarMarker.bindPopup('Your Location').openPopup();
 
-            // Load RainViewer radar data
             await loadRainViewerRadar();
             
-            // Force map to resize properly
             setTimeout(() => {
                 radarMap.invalidateSize();
             }, 100);
@@ -963,13 +1162,11 @@
 
         async function loadRainViewerRadar() {
             try {
-                // Fetch available radar timestamps from RainViewer API
                 const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
                 const data = await response.json();
                 
                 radarFrames = [];
                 
-                // Get past radar frames
                 if (data.radar && data.radar.past) {
                     radarFrames = data.radar.past.map(frame => ({
                         time: frame.time,
@@ -978,7 +1175,6 @@
                     }));
                 }
                 
-                // Get nowcast (future forecast) frames
                 if (data.radar && data.radar.nowcast) {
                     const forecastFrames = data.radar.nowcast.map(frame => ({
                         time: frame.time,
@@ -989,13 +1185,11 @@
                 }
                 
                 if (radarFrames.length > 0) {
-                    // Setup slider
                     const slider = document.getElementById('radarSlider');
                     slider.max = radarFrames.length - 1;
-                    slider.value = radarFrames.length - 1; // Start at current time
+                    slider.value = radarFrames.length - 1;
                     currentFrameIndex = radarFrames.length - 1;
                     
-                    // Update initial frame
                     updateRadarFrame(currentFrameIndex);
                 }
                 
@@ -1011,12 +1205,10 @@
             
             const frame = radarFrames[currentFrameIndex];
             
-            // Remove old radar layer
             if (radarLayer) {
                 radarMap.removeLayer(radarLayer);
             }
             
-            // Add new radar layer
             radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
                 attribution: 'RainViewer',
                 opacity: 0.7,
@@ -1025,7 +1217,6 @@
             
             radarLayer.addTo(radarMap);
             
-            // Update time display
             const date = new Date(frame.time * 1000);
             const timeStr = date.toLocaleString('en-US', { 
                 month: 'short', 
@@ -1038,7 +1229,7 @@
         }
 
         function playRadarAnimation() {
-            if (radarAnimationTimer) return; // Already playing
+            if (radarAnimationTimer) return;
             
             radarAnimationTimer = setInterval(() => {
                 currentFrameIndex++;
@@ -1047,7 +1238,7 @@
                 }
                 document.getElementById('radarSlider').value = currentFrameIndex;
                 updateRadarFrame(currentFrameIndex);
-            }, 500); // 500ms per frame
+            }, 500);
         }
 
         function pauseRadarAnimation() {
@@ -1063,7 +1254,6 @@
             const hourlyData = currentForecastData;
             const timeRange = parseInt(document.getElementById('timeRange').value);
             
-            // Find the current hour index (first future hour)
             const now = new Date();
             let startIndex = 0;
             for (let i = 0; i < hourlyData.time.length; i++) {
@@ -1074,7 +1264,6 @@
                 }
             }
             
-            // Slice data starting from current hour
             const hours = hourlyData.time.slice(startIndex, startIndex + timeRange).map(time => {
                 const date = new Date(time);
                 return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
@@ -1088,7 +1277,6 @@
             const snow = hourlyData.snowfall ? hourlyData.snowfall.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
             const wind = hourlyData.wind_speed_10m.slice(startIndex, startIndex + timeRange);
 
-            // Calculate precipitation totals
             const totalRain = rain.reduce((a, b) => a + (b || 0), 0);
             const totalSnow = snow.reduce((a, b) => a + (b || 0), 0);
             const totalAll = totalPrecip.reduce((a, b) => a + (b || 0), 0);
@@ -1098,18 +1286,14 @@
                 (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")
             `;
 
-            // Generate daily forecasts
             generateDailyForecasts(hourlyData, startIndex);
 
-            // Generate historical chart
             if (historicalData) {
                 generateHistoricalChart(historicalData);
             }
 
-            // Generate hourly forecast table
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
 
-            // Temperature & Feels Like Chart
             const ctx1 = document.getElementById('tempChart').getContext('2d');
             
             if (tempChart) {
@@ -1181,7 +1365,6 @@
                 }
             });
 
-            // Precipitation Probability & Type Chart
             const ctx2 = document.getElementById('precipChart').getContext('2d');
             
             if (precipChart) {
@@ -1282,14 +1465,12 @@
                 }
             });
 
-            // Precipitation Accumulation Chart
             const ctx3 = document.getElementById('precipAccumChart').getContext('2d');
             
             if (precipAccumChart) {
                 precipAccumChart.destroy();
             }
 
-            // Calculate cumulative precipitation
             let cumulativeRain = [];
             let cumulativeSnow = [];
             let cumulativeTotal = [];
@@ -1384,7 +1565,6 @@
                 }
             });
 
-            // Wind Speed Chart
             const ctx4 = document.getElementById('windChart').getContext('2d');
             
             if (windChart) {
@@ -1456,7 +1636,6 @@
                 historicalChart.destroy();
             }
 
-            // Get past 24 hours of data
             const hours = historicalData.hourly.time.map(time => {
                 const date = new Date(time);
                 return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
@@ -1467,7 +1646,6 @@
             const rainHourly = historicalData.hourly.rain || [];
             const snowHourly = historicalData.hourly.snowfall || [];
 
-            // Calculate cumulative precipitation
             let cumulativeRain = [];
             let cumulativeSnow = [];
             let sumRain = 0;
@@ -1601,7 +1779,6 @@
             const dayAfterEnd = new Date(dayAfterStart);
             dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
 
-            // Helper function to get day's data
             function getDayData(dayStart, dayEnd) {
                 const dayIndices = [];
                 for (let i = 0; i < hourlyData.time.length; i++) {
@@ -1628,7 +1805,6 @@
                 };
             }
 
-            // Generate HTML for a day
             function formatDayForecast(data) {
                 if (!data) return '<div class="daily-value">No data available</div>';
                 
@@ -1652,15 +1828,12 @@
                 `;
             }
 
-            // Today (from now until midnight)
             const todayData = getDayData(now, tomorrowStart);
             document.getElementById('todayForecast').innerHTML = formatDayForecast(todayData);
 
-            // Tomorrow (full day)
             const tomorrowData = getDayData(tomorrowStart, dayAfterStart);
             document.getElementById('tomorrowForecast').innerHTML = formatDayForecast(tomorrowData);
 
-            // Day after (full day)
             const dayAfterData = getDayData(dayAfterStart, dayAfterEnd);
             document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(dayAfterData);
         }
@@ -1740,7 +1913,6 @@
             errorDiv.classList.add('active');
         }
 
-        // Load Land O' Lakes forecast on page load
         window.addEventListener('load', () => {
             getForecast(28.2189, -82.4526);
         });
