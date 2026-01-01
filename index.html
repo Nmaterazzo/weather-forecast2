@@ -118,6 +118,104 @@
             display: block;
         }
 
+        .hero-temp {
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.3) 0%, rgba(52, 73, 94, 0.2) 100%);
+            padding: 40px 20px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #4a90e2;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-temp::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.15;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .hero-temp.clear::before {
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+        }
+
+        .hero-temp.sunny::before {
+            background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%);
+        }
+
+        .hero-temp.partly-cloudy::before {
+            background: linear-gradient(135deg, #3498db 0%, #95a5a6 100%);
+        }
+
+        .hero-temp.cloudy::before {
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+        }
+
+        .hero-temp.overcast::before {
+            background: linear-gradient(135deg, #34495e 0%, #7f8c8d 100%);
+        }
+
+        .hero-temp.rain::before {
+            background: linear-gradient(135deg, #2980b9 0%, #34495e 100%);
+        }
+
+        .hero-temp.drizzle::before {
+            background: linear-gradient(135deg, #5dade2 0%, #85929e 100%);
+        }
+
+        .hero-temp.snow::before {
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+        }
+
+        .hero-temp.thunderstorm::before {
+            background: linear-gradient(135deg, #2c3e50 0%, #8e44ad 100%);
+        }
+
+        .hero-temp.fog::before {
+            background: linear-gradient(135deg, #95a5a6 0%, #bdc3c7 100%);
+        }
+
+        .hero-temp-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-temp-value {
+            font-size: 120px;
+            font-weight: 200;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .hero-temp-condition {
+            font-size: 24px;
+            color: #fff;
+            font-weight: 300;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+        }
+
+        .hero-temp-feels {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            font-weight: 300;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
         .current-weather {
             background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(52, 73, 94, 0.05) 100%), #1a1a1a;
             padding: 10px;
@@ -769,10 +867,7 @@
 
             <div class="preset-locations">
                 <button class="preset-btn" onclick="setLocation(28.2189, -82.4526)">Land O' Lakes, FL</button>
-                <button class="preset-btn" onclick="setLocation(41.2565, -74.3587)">Warwick, NY</button>
-                <button class="preset-btn" onclick="setLocation(45.5017, -73.5673)">Montreal, QC</button>
-                <button class="preset-btn" onclick="setLocation(46.8139, -71.2080)">Quebec City, QC</button>
-                <button class="preset-btn" onclick="setLocation(28.5383, -81.3792)">Orlando, FL</button>
+                <button class="preset-btn" onclick="setLocation(27.9506, -82.4572)">Tampa, FL</button>
             </div>
         </div>
 
@@ -783,6 +878,14 @@
         </div>
 
         <div class="forecast-section" id="forecast">
+            <div class="hero-temp" id="heroTemp">
+                <div class="hero-temp-content">
+                    <div class="hero-temp-value" id="heroTempValue">--°</div>
+                    <div class="hero-temp-condition" id="heroCondition">--</div>
+                    <div class="hero-temp-feels" id="heroFeels">Feels like --°</div>
+                </div>
+            </div>
+
             <div class="current-weather">
                 <div class="location-header">
                     <div class="location-name" id="locationName">--</div>
@@ -791,12 +894,12 @@
 
                 <div class="current-grid">
                     <div class="current-item">
-                        <div class="current-label">Temperature</div>
-                        <div class="current-value temp" id="temp">--°F</div>
-                    </div>
-                    <div class="current-item">
                         <div class="current-label">Feels Like</div>
                         <div class="current-value temp" id="feelsLike">--°F</div>
+                    </div>
+                    <div class="current-item">
+                        <div class="current-label">Precip %</div>
+                        <div class="current-value precip" id="precipProb">--%</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Wind Speed</div>
@@ -823,6 +926,8 @@
                         <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
                 </div>
+                <!-- Hidden temp for heatmap reference -->
+                <div id="temp" style="display: none;">--°F</div>
             </div>
 
             <!-- Heat Map Section -->
@@ -1128,9 +1233,23 @@
                 const avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
                 const avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
                 const avgPressure = omModels.reduce((s, d) => s + (d.surface_pressure || 0), 0) / omModels.length;
+                const currentCode = omModels[0].weather_code;
+                const conditionText = getWeatherDescription(currentCode);
 
-                document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`;
+                // Update hero temp section
+                document.getElementById('heroTempValue').textContent = `${Math.round(avgTemp)}°`;
+                document.getElementById('heroCondition').textContent = conditionText;
+                document.getElementById('heroFeels').textContent = `Feels like ${Math.round(avgFeels)}°`;
+                
+                // Set background based on weather code
+                const heroTemp = document.getElementById('heroTemp');
+                heroTemp.className = 'hero-temp ' + getWeatherClass(currentCode);
+
+                // Update current conditions (removed temp from display, added precip %)
+                const currentPrecipProb = Math.round(bestmatch?.data.hourly.precipitation_probability?.[0] || 0);
+                document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
+                document.getElementById('precipProb').textContent = `${currentPrecipProb}%`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
                 document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
@@ -1801,6 +1920,22 @@
         function getWeatherDescription(code) {
             const codes = {0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',61:'Slight rain',63:'Moderate rain',65:'Heavy rain',71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + heavy hail'};
             return codes[code] || 'Unknown';
+        }
+
+        function getWeatherClass(code) {
+            // Map weather codes to CSS classes for hero background
+            if (code === 0) return 'clear';
+            if (code === 1) return 'sunny';
+            if (code === 2) return 'partly-cloudy';
+            if (code === 3) return 'overcast';
+            if (code >= 45 && code <= 48) return 'fog';
+            if (code >= 51 && code <= 55) return 'drizzle';
+            if (code >= 61 && code <= 67) return 'rain';
+            if (code >= 71 && code <= 77) return 'snow';
+            if (code >= 80 && code <= 82) return 'rain';
+            if (code >= 85 && code <= 86) return 'snow';
+            if (code >= 95) return 'thunderstorm';
+            return 'cloudy';
         }
 
         function showError(message) {
