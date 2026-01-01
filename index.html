@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Model Forecast - Smart Blend</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-             integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-             crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                crossorigin=""></script>
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -118,13 +118,12 @@
             display: block;
         }
 
-        /* --- HERO TEMP CONTAINER STYLES --- */
         .hero-temp {
-            background: none; /* Base background reset */
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.3) 0%, rgba(52, 73, 94, 0.2) 100%);
             padding: 40px 20px;
             border-radius: 12px;
             margin-bottom: 10px;
-            border: none; /* Base border reset */
+            border: 1px solid #4a90e2;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -133,7 +132,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.5s, border-color 0.5s;
         }
 
         .hero-temp::before {
@@ -143,74 +141,98 @@
             left: 0;
             right: 0;
             bottom: 0;
-            opacity: 1; 
+            opacity: 0.15;
             z-index: 0;
             background-size: cover;
             background-position: center;
-            /* Default Fallback */
-            background: linear-gradient(135deg, rgba(74, 144, 226, 0.3) 0%, rgba(52, 73, 94, 0.2) 100%);
-            border: 1px solid #4a90e2;
-            border-radius: 12px;
-            transition: background 0.5s, border-color 0.5s;
         }
 
-        /* --- DYNAMIC BACKGROUNDS --- */
+        /* Dynamic Background Styles (REPLACEMENT) */
+        .hero-temp {
+            /* ... existing styles for .hero-temp ... */
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.3) 0%, rgba(52, 73, 94, 0.2) 100%); /* You may remove this line if you want the background to be only the image/weather */
+            /* ... */
+        }
 
-        /* Clear/Sunny */
+        .hero-temp::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: grayscale(10%) blur(1px); /* A subtle effect to make the image blend better */
+        }
+        
+        .hero-temp::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1); /* Dark overlay for text readability */
+            z-index: 0;
+        }
+
         .hero-temp.clear::before {
-            background: radial-gradient(circle at 80% 20%, #ffeb3b 10%, #4a90e2 40%, #89cff0 100%);
-            border-color: #89cff0;
+            /* Light blue sky with a real sun */
+            background-image: url('');
+            background-color: #7dd3fc; /* Tailwind sky-300 as fallback */
         }
-        
-        /* Cloudy/Overcast */
-        .hero-temp.cloudy::before, .hero-temp.overcast::before {
-            background: linear-gradient(135deg, #7f8c8d 0%, #5c6770 100%);
-            border-color: #7f8c8d;
-        }
-        
-        /* Partly Cloudy */
+
         .hero-temp.partly-cloudy::before {
-            background: linear-gradient(135deg, #a7b9c6 0%, #89cff0 40%, #6a8ba7 100%);
-            border-color: #a7b9c6;
+            /* Scattered clouds */
+            background-image: url('');
+            background-color: #93c5fd; /* Tailwind blue-300 as fallback */
         }
 
-        /* Rain/Drizzle */
+        .hero-temp.cloudy::before, .hero-temp.overcast::before {
+            /* Overcast/Cloudy */
+            background-image: url('');
+            background-color: #6b7280; /* Tailwind gray-500 as fallback */
+        }
+
         .hero-temp.rain::before, .hero-temp.drizzle::before {
-            background: linear-gradient(180deg, #566573 0%, #2c3e50 100%);
-            border-color: #566573;
+            /* Clouds with rain */
+            background-image: url('');
+            background-color: #3b82f6; /* Tailwind blue-500 as fallback */
         }
 
-        /* Snow */
-        .hero-temp.snow::before {
-            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
-            border-color: #ecf0f1;
-        }
-        
-        /* Thunderstorm */
         .hero-temp.thunderstorm::before {
-            background: linear-gradient(135deg, #2c3e50 0%, #4a196e 100%);
-            border-color: #2c3e50;
-        }
-
-        /* Fog/Mist */
-        .hero-temp.fog::before {
-            background: linear-gradient(135deg, #bdc3c7 0%, #aeb6bf 100%);
-            border-color: #bdc3c7;
+            /* Stormy clouds */
+            background-image: url('');
+            background-color: #1f2937; /* Tailwind gray-800 as fallback */
         }
         
-        /* --- TEXT CENTERING FIX --- */
+        .hero-temp.snow::before {
+            /* Snowy landscape */
+            background-image: url('');
+            background-color: #d1d5db; /* Tailwind gray-300 as fallback */
+        }
+
+        .hero-temp.fog::before {
+            /* Misty/Foggy scene */
+            background-image: url('');
+            background-color: #a1a1aa; /* Tailwind zinc-400 as fallback */
+        }
+
+        .hero-temp.light-fog::before {
+            /* Lighter mist */
+            background-image: url('');
+            background-color: #e4e4e7; /* Tailwind zinc-200 as fallback */
+        }
+        
+        /* End of Dynamic Background Styles */
+        }
+
         .hero-temp-content {
             position: relative;
             z-index: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Ensures content block is centered */
-        }
-        
-        .temp-display {
-            display: flex;
-            align-items: flex-start;
-            justify-content: center; /* Centers the temp number + degree symbol */
         }
 
         .hero-temp-value {
@@ -218,25 +240,17 @@
             font-weight: 200;
             color: #fff;
             line-height: 1;
+            margin-bottom: 10px;
             text-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
-        .degree-symbol {
-            font-size: 60px;
-            font-weight: 200;
-            color: #fff;
-            line-height: 1;
-            margin-top: 10px;
-        }
-        
         .hero-temp-condition {
             font-size: 24px;
             color: #fff;
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-top: -10px; /* Pull text up closer to the number */
             margin-bottom: 5px;
-            text-align: center; 
+            margin-left: -1ch; /* ADD THIS LINE or replace the old one */
         }
 
         .hero-temp-feels {
@@ -244,9 +258,8 @@
             color: rgba(255,255,255,0.9);
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin-left: -1ch; /* ADD THIS LINE or replace the old one */
         }
-
-        /* --- Rest of the Existing Styles --- */
 
         .current-weather {
             background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(52, 73, 94, 0.05) 100%), #1a1a1a;
@@ -909,60 +922,60 @@
             Loading forecast data from multiple models...
         </div>
 
-        <div class="forecast-section" id="forecast" style="display: block;"> <div class="hero-temp clear" id="heroTemp">
+        <div class="forecast-section" id="forecast">
+            <div class="hero-temp" id="heroTemp">
                 <div class="hero-temp-content">
-                    <div class="temp-display">
-                        <div class="hero-temp-value" id="heroTempValueNumber">85</div>
-                        <div class="degree-symbol">°</div>
-                    </div>
-                    <div class="hero-temp-condition" id="heroCondition">Clear & Sunny</div>
-                    <div class="hero-temp-feels" id="heroFeels">Feels like 87°</div>
+                    <div class="hero-temp-value" id="heroTempValue">--°</div>
+                    <div class="hero-temp-condition" id="heroCondition">--</div>
+                    <div class="hero-temp-feels" id="heroFeels">Feels like --°</div>
                 </div>
             </div>
 
             <div class="current-weather">
                 <div class="location-header">
-                    <div class="location-name" id="locationName">Land O' Lakes, FL</div>
-                    <div class="model-name" id="modelRun" style="color: #999; font-size: 7px;">SmartBlend 06z/12h</div>
+                    <div class="location-name" id="locationName">--</div>
+                    <div class="model-name" id="modelRun" style="color: #999; font-size: 7px;">--</div>
                 </div>
 
                 <div class="current-grid">
                     <div class="current-item">
                         <div class="current-label">Feels Like</div>
-                        <div class="current-value temp" id="feelsLike">87°F</div>
+                        <div class="current-value temp" id="feelsLike">--°F</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Precip %</div>
-                        <div class="current-value precip" id="precipProb">10%</div>
+                        <div class="current-value precip" id="precipProb">--%</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Wind Speed</div>
-                        <div class="current-value wind" id="wind">5 mph</div>
+                        <div class="current-value wind" id="wind">-- mph</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Wind Gusts</div>
-                        <div class="current-value wind" id="windGusts">12 mph</div>
+                        <div class="current-value wind" id="windGusts">-- mph</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Humidity</div>
-                        <div class="current-value" id="humidity">65%</div>
+                        <div class="current-value" id="humidity">--%</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Precipitation</div>
-                        <div class="current-value precip" id="precip">0.00 in</div>
+                        <div class="current-value precip" id="precip">-- in</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Pressure</div>
-                        <div class="current-value" id="pressure">1013 mb</div>
+                        <div class="current-value" id="pressure">-- mb</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 18px;" id="conditions">☀️</div>
+                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
                 </div>
-                <div id="temp" style="display: none;">85°F</div>
+                <!-- Hidden temp for heatmap reference -->
+                <div id="temp" style="display: none;">--°F</div>
             </div>
 
+            <!-- Heat Map Section -->
             <div class="heatmap-section">
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -971,11 +984,13 @@
                     </div>
                     <div class="heatmap-container">
                         <div class="heatmap" id="heatmapGrid">
-                            </div>
+                            <!-- Will be populated by JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>
 
+            <!-- NOAA RIDGE Radar Compact -->
             <div class="ridge-compact-section">
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -992,14 +1007,17 @@
                 </div>
             </div>
 
+            <!-- Daily Forecast Cards Section -->
             <div class="daily-forecast-cards">
                 <div class="chart-card">
                     <div class="chart-title">10-Day Forecast</div>
                     <div class="daily-cards-grid" id="dailyCardsGrid">
-                        </div>
+                        <!-- Will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
 
+            <!-- Hourly Detail Modal -->
             <div class="hourly-modal" id="hourlyModal">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -1007,7 +1025,8 @@
                         <button class="modal-close" onclick="closeHourlyModal()">&times;</button>
                     </div>
                     <div class="modal-body" id="modalHourlyTable">
-                        </div>
+                        <!-- Will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
 
@@ -1080,64 +1099,1478 @@
                     </div>
                 </div>
             </div>
+
+            <div class="historical-section">
+                <div class="chart-card">
+                    <div class="chart-title">Historical Weather (Past 24 Hours)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            </div>
+            </div>
+
+            <div class="radar-section">
+                <div class="chart-card">
+                    <div class="chart-title">Precipitation Radar</div>
+                    <div id="radarContainer" style="height: 500px; position: relative; background: #0a0a0a; border-radius: 8px; overflow: hidden;">
+                        <div id="radarMap" style="height: 100%; width: 100%;"></div>
+                        <div id="radarTimeline" style="position: absolute; bottom: 20px; left: 10px; right: 10px; background: rgba(26, 26, 26, 0.9); padding: 15px; border-radius: 8px; z-index: 1000;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <button onclick="playRadarAnimation()" id="playBtn" style="padding: 8px 16px; background: #4a90e2; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Play</button>
+                                <button onclick="pauseRadarAnimation()" id="pauseBtn" style="padding: 8px 16px; background: #666; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Pause</button>
+                                <span id="radarTimeDisplay" style="color: #e0e0e0; font-size: 13px;">--</span>
+                            </div>
+                            <input type="range" id="radarSlider" min="0" max="0" value="0" style="width: 100%;" oninput="updateRadarFrame(this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
     <script>
-        // Placeholder for existing JS functions (searchCity, getCurrentLocation, setLocation, etc.)
-        function searchCity() { console.log("Searching city..."); }
-        function getCurrentLocation() { console.log("Getting current location..."); }
-        function setLocation(lat, lon) { console.log(`Setting location to ${lat}, ${lon}`); }
-        function toggleHeatmapExpand() { console.log("Toggling heatmap expansion..."); }
-        function switchRidgeCompact(layer) { console.log(`Switching radar layer to ${layer}...`); }
-        function closeHourlyModal() { document.getElementById('hourlyModal').classList.remove('active'); }
-        function updateCharts() { console.log("Updating charts based on time range..."); }
+        let tempChart = null;
+        let precipChart = null;
+        let precipAccumChart = null;
+        let windChart = null;
+        let historicalChart = null;
+        let currentForecastData = null;
+        let currentHistoricalData = null;
+        let currentLatLng = null;
+        let radarMap = null;
+        let radarMarker = null;
+        let radarLayer = null;
+        let radarFrames = [];
+        let radarAnimationTimer = null;
+        let currentFrameIndex = 0;
+        let ridgeCompactMap = null;
+        let ridgeCompactLayer = null;
+
+        function setLocation(lat, lng) {
+            getForecast(lat, lng);
+        }
+
+        async function searchCity() {
+            const cityName = document.getElementById('cityInput').value.trim();
+            
+            if (!cityName) {
+                showError('Please enter a city name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    showError('City not found. Try including state/country (e.g., "Orlando, FL" or "Paris, France")');
+                    return;
+                }
+
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+
+                getForecast(lat, lng);
+            } catch (err) {
+                showError(`Error searching for city: ${err.message}`);
+            }
+        }
+
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showError('Geolocation is not supported by your browser');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    getForecast(lat, lng);
+                },
+                (error) => {
+                    document.getElementById('loading').style.display = 'none';
+                    showError('Unable to get your location. Please enable location services or enter a city name.');
+                }
+            );
+        }
+
+        async function getForecast(lat, lng) {
+            if (isNaN(lat) || isNaN(lng)) {
+                showError('Please enter valid latitude and longitude values');
+                return;
+            }
+
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                showError('Latitude must be between -90 and 90, longitude between -180 and 180');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('forecast').classList.remove('active');
+            document.getElementById('error').classList.remove('active');
+
+            await fetchSmartBlend(lat, lng);
+        }
+
+        async function fetchSmartBlend(lat, lng) {
+            try {
+                currentLatLng = { lat, lng };
+                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
+                
+                let promises = [];
+
+                if (isUS) {
+                    promises.push(
+                        fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
+                            headers: {'User-Agent': '(WeatherApp, contact@example.com)'}
+                        })
+                        .then(r => r.json())
+                        .then(p => fetch(p.properties.forecastHourly, {headers: {'User-Agent': '(WeatherApp, contact@example.com)'}}))
+                        .then(r => r.json())
+                        .then(d => ({type: 'weathergov', data: d}))
+                        .catch(() => null)
+                    );
+                }
+
+                promises.push(
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`)
+                    .then(r => r.json()).then(d => ({type: 'bestmatch', data: d})),
+                    
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`)
+                    .then(r => r.json()).then(d => ({type: 'gfs', data: d})),
+                    
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
+                    .then(r => r.json()).then(d => ({type: 'ecmwf', data: d}))
+                );
+
+                const results = await Promise.all(promises);
+                const validResults = results.filter(r => r !== null);
+
+                if (validResults.length === 0) {
+                    throw new Error('Failed to fetch any models');
+                }
+
+                const weathergov = validResults.find(r => r.type === 'weathergov');
+                const bestmatch = validResults.find(r => r.type === 'bestmatch');
+                const gfs = validResults.find(r => r.type === 'gfs');
+                const ecmwf = validResults.find(r => r.type === 'ecmwf');
+
+                let weathergovData = null;
+                if (weathergov) {
+                    weathergovData = convertWeatherGovToStandard(weathergov.data.properties.periods);
+                }
+
+                const blended = buildSmartBlend(weathergovData, bestmatch?.data.hourly, gfs?.data.hourly, ecmwf?.data.hourly);
+
+                setLocationName(lat, lng);
+                document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
+
+                const omModels = [bestmatch, gfs, ecmwf].filter(m => m).map(r => r.data.current);
+                const avgTemp = omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
+                const avgFeels = omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
+                const avgWind = omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
+                const avgGusts = omModels.reduce((s, d) => s + (d.wind_gusts_10m || 0), 0) / omModels.length;
+                const avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
+                const avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
+                const avgPressure = omModels.reduce((s, d) => s + (d.surface_pressure || 0), 0) / omModels.length;
+                const currentCode = omModels[0].weather_code;
+                const conditionText = getWeatherDescription(currentCode);
+
+                // Update hero temp section
+                document.getElementById('heroTempValue').textContent = `${Math.round(avgTemp)}°`;
+                document.getElementById('heroCondition').textContent = conditionText;
+                document.getElementById('heroFeels').textContent = `Feels like ${Math.round(avgFeels)}°`;
+                
+                // Set background based on weather code
+                const heroTemp = document.getElementById('heroTemp');
+                heroTemp.className = 'hero-temp ' + getWeatherClass(currentCode);
+
+                // Update current conditions (removed temp from display, added precip %)
+                const currentPrecipProb = Math.round(bestmatch?.data.hourly.precipitation_probability?.[0] || 0);
+                document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
+                document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
+                document.getElementById('precipProb').textContent = `${currentPrecipProb}%`;
+                document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
+                document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
+                document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
+                document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
+                document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
+                document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
+
+                currentForecastData = blended;
+
+                await fetchHistoricalAndFinish(lat, lng);
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading forecast: ${err.message}`);
+                console.error(err);
+            }
+        }
+
+        function buildSmartBlend(weathergov, bestmatch, gfs, ecmwf) {
+            // FIX: Use the longest available forecast for base times (usually GFS with 240 hours)
+            const baseTimes = gfs?.time || ecmwf?.time || bestmatch?.time;
+            if (!baseTimes) return null;
+
+            const blended = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: [],
+                wind_gusts_10m: [],
+                weather_code: []
+            };
+
+            const now = new Date();
+
+            // Build index maps for each model based on timestamp matching
+            const buildIndexMap = (modelData) => {
+                if (!modelData) return {};
+                const map = {};
+                modelData.time.forEach((time, idx) => {
+                    map[time] = idx;
+                });
+                return map;
+            };
+
+            const weathergovMap = buildIndexMap(weathergov);
+            const bestmatchMap = buildIndexMap(bestmatch);
+            const gfsMap = buildIndexMap(gfs);
+            const ecmwfMap = buildIndexMap(ecmwf);
+
+            // Process each timestamp in the base forecast
+            for (let i = 0; i < baseTimes.length; i++) {
+                const timestamp = baseTimes[i];
+                const forecastTime = new Date(timestamp);
+                const hoursFromNow = (forecastTime - now) / (1000 * 60 * 60);
+
+                blended.time.push(timestamp);
+
+                // Collect available data from each model for this timestamp
+                const dataPoints = [];
+                
+                // Determine which models to use based on forecast hour
+                if (hoursFromNow < 24) {
+                    // 0-24 hours: Weather.gov + Best Match
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 48) {
+                    // 25-48 hours: Weather.gov + Best Match + ECMWF
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 72) {
+                    // 49-72 hours: Weather.gov + Best Match + ECMWF + GFS
+                    if (weathergovMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: weathergov,
+                            idx: weathergovMap[timestamp]
+                        });
+                    }
+                    if (bestmatchMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: bestmatch,
+                            idx: bestmatchMap[timestamp]
+                        });
+                    }
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                } else if (hoursFromNow < 120) {
+                    // 73-120 hours: ECMWF + GFS
+                    if (ecmwfMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: ecmwf,
+                            idx: ecmwfMap[timestamp]
+                        });
+                    }
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                } else {
+                    // 121-240 hours: GFS only
+                    if (gfsMap[timestamp] !== undefined) {
+                        dataPoints.push({
+                            model: gfs,
+                            idx: gfsMap[timestamp]
+                        });
+                    }
+                }
+
+                // If no data available for this timestamp, use null values
+                if (dataPoints.length === 0) {
+                    blended.temperature_2m[i] = null;
+                    blended.apparent_temperature[i] = null;
+                    blended.precipitation_probability[i] = 0;
+                    blended.precipitation[i] = 0;
+                    blended.rain[i] = 0;
+                    blended.snowfall[i] = 0;
+                    blended.wind_speed_10m[i] = 0;
+                    blended.wind_gusts_10m[i] = 0;
+                    blended.weather_code[i] = 0;
+                    continue;
+                }
+
+                // Average the available data points
+                blended.temperature_2m[i] = dataPoints.reduce((s, d) => s + (d.model.temperature_2m[d.idx] || 0), 0) / dataPoints.length;
+                blended.apparent_temperature[i] = dataPoints.reduce((s, d) => s + (d.model.apparent_temperature?.[d.idx] || d.model.temperature_2m[d.idx]), 0) / dataPoints.length;
+                blended.precipitation_probability[i] = dataPoints.reduce((s, d) => s + (d.model.precipitation_probability?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.precipitation[i] = dataPoints.reduce((s, d) => s + (d.model.precipitation?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.rain[i] = dataPoints.reduce((s, d) => s + (d.model.rain?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.snowfall[i] = dataPoints.reduce((s, d) => s + (d.model.snowfall?.[d.idx] || 0), 0) / dataPoints.length;
+                blended.wind_speed_10m[i] = dataPoints.reduce((s, d) => s + (d.model.wind_speed_10m[d.idx] || 0), 0) / dataPoints.length;
+                blended.wind_gusts_10m[i] = dataPoints.reduce((s, d) => s + (d.model.wind_gusts_10m?.[d.idx] || 0), 0) / dataPoints.length;
+                
+                // For weather code, prefer best_match if available
+                const bestmatchPoint = dataPoints.find(d => d.model === bestmatch);
+                if (bestmatchPoint && bestmatchPoint.model.weather_code) {
+                    blended.weather_code[i] = bestmatchPoint.model.weather_code[bestmatchPoint.idx];
+                } else if (dataPoints[0] && dataPoints[0].model.weather_code) {
+                    blended.weather_code[i] = dataPoints[0].model.weather_code[dataPoints[0].idx];
+                } else {
+                    blended.weather_code[i] = 0;
+                }
+            }
+
+            return blended;
+        }
+
+        function convertWeatherGovToStandard(periods) {
+            const hourlyData = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: [],
+                wind_gusts_10m: [],
+                weather_code: []
+            };
+
+            periods.forEach(period => {
+                hourlyData.time.push(period.startTime);
+                hourlyData.temperature_2m.push(period.temperature);
+                hourlyData.apparent_temperature.push(period.temperature);
+                hourlyData.precipitation_probability.push(period.probabilityOfPrecipitation?.value || 0);
+                hourlyData.precipitation.push(0);
+                hourlyData.rain.push(0);
+                hourlyData.snowfall.push(0);
+                
+                const windMatch = period.windSpeed.match(/(\d+)/);
+                const windSpeed = windMatch ? parseInt(windMatch[1]) : 0;
+                hourlyData.wind_speed_10m.push(windSpeed);
+                hourlyData.wind_gusts_10m.push(windSpeed * 1.3);
+                hourlyData.weather_code.push(0);
+            });
+
+            return hourlyData;
+        }
+
+        async function setLocationName(lat, lng) {
+            try {
+                const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                const geoData = await geoResponse.json();
+                const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+            } catch (e) {
+                document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+            }
+        }
+
+        async function fetchHistoricalAndFinish(lat, lng) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const today = new Date();
+            const startDate = yesterday.toISOString().split('T')[0];
+            const endDate = today.toISOString().split('T')[0];
+            
+            const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+            const historicalResponse = await fetch(historicalUrl);
+            const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+
+            updateCharts(historicalData);
+            initRadar(lat, lng);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('forecast').classList.add('active');
+        }
+
+        async function initRadar(lat, lng) {
+            if (!radarMap) {
+                radarMap = L.map('radarMap').setView([lat, lng], 7);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap, &copy; CARTO',
+                    maxZoom: 19
+                }).addTo(radarMap);
+            } else {
+                radarMap.setView([lat, lng], 7);
+            }
+
+            if (radarMarker) radarMap.removeLayer(radarMarker);
+            radarMarker = L.marker([lat, lng]).addTo(radarMap);
+            radarMarker.bindPopup('Your Location').openPopup();
+
+            await loadRainViewerRadar();
+            
+            // Initialize compact RIDGE radar
+            initRidgeCompact(lat, lng);
+            
+            setTimeout(() => {
+                radarMap.invalidateSize();
+                if (ridgeCompactMap) ridgeCompactMap.invalidateSize();
+            }, 100);
+        }
+
+        function initRidgeCompact(lat, lng) {
+            if (!ridgeCompactMap) {
+                ridgeCompactMap = L.map('ridgeCompactMap').setView([lat, lng], 6);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap, &copy; CARTO',
+                    maxZoom: 19
+                }).addTo(ridgeCompactMap);
+            } else {
+                ridgeCompactMap.setView([lat, lng], 6);
+            }
+
+            // Add location marker
+            L.marker([lat, lng]).addTo(ridgeCompactMap).bindPopup('Your Location');
+
+            // Check if US location
+            if (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66) {
+                loadRidgeCompactLayer('bref');
+                document.getElementById('ridgeCompactStatus').textContent = 'US High-Res';
+                document.getElementById('ridgeCompactStatus').style.color = '#5ebd5e';
+            } else {
+                document.getElementById('ridgeCompactStatus').textContent = 'Outside US';
+                document.getElementById('ridgeCompactStatus').style.color = '#e74c3c';
+            }
+        }
+
+        function loadRidgeCompactLayer(type) {
+            if (ridgeCompactLayer) {
+                ridgeCompactMap.removeLayer(ridgeCompactLayer);
+            }
+
+            const layerName = `conus_${type}_qcd`;
+            
+            ridgeCompactLayer = L.tileLayer.wms('https://opengeo.ncep.noaa.gov/geoserver/conus/' + layerName + '/ows', {
+                layers: layerName,
+                format: 'image/png',
+                transparent: true,
+                opacity: 0.7,
+                attribution: 'NOAA/NWS'
+            });
+            
+            ridgeCompactLayer.addTo(ridgeCompactMap);
+        }
+
+        function switchRidgeCompact(type) {
+            if (!currentLatLng) return;
+            
+            // Check if US location
+            if (currentLatLng.lat < 24 || currentLatLng.lat > 50 || currentLatLng.lng < -125 || currentLatLng.lng > -66) {
+                return;
+            }
+
+            loadRidgeCompactLayer(type);
+            
+            // Update button states
+            document.querySelectorAll('.ridge-compact-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById('ridgeCompact' + type.charAt(0).toUpperCase() + type.slice(1) + 'Btn').classList.add('active');
+        }
+
+        async function loadRainViewerRadar() {
+            try {
+                const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await response.json();
+                
+                radarFrames = [];
+                if (data.radar?.past) {
+                    radarFrames = data.radar.past.map(frame => ({time: frame.time, path: frame.path, isPast: true}));
+                }
+                if (data.radar?.nowcast) {
+                    radarFrames = radarFrames.concat(data.radar.nowcast.map(frame => ({time: frame.time, path: frame.path, isPast: false})));
+                }
+                
+                if (radarFrames.length > 0) {
+                    const slider = document.getElementById('radarSlider');
+                    slider.max = radarFrames.length - 1;
+                    slider.value = radarFrames.length - 1;
+                    currentFrameIndex = radarFrames.length - 1;
+                    updateRadarFrame(currentFrameIndex);
+                }
+            } catch (err) {
+                console.error('Error loading radar:', err);
+            }
+        }
+
+        function updateRadarFrame(frameIndex) {
+            currentFrameIndex = parseInt(frameIndex);
+            if (radarFrames.length === 0 || !radarMap) return;
+            
+            const frame = radarFrames[currentFrameIndex];
+            if (radarLayer) radarMap.removeLayer(radarLayer);
+            
+            radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                attribution: 'RainViewer', opacity: 0.7, maxZoom: 12
+            }).addTo(radarMap);
+            
+            const date = new Date(frame.time * 1000);
+            const timeStr = date.toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+            document.getElementById('radarTimeDisplay').textContent = `${timeStr} (${frame.isPast ? 'Past' : 'Forecast'})`;
+        }
+
+        function playRadarAnimation() {
+            if (radarAnimationTimer) return;
+            radarAnimationTimer = setInterval(() => {
+                currentFrameIndex = (currentFrameIndex + 1) % radarFrames.length;
+                document.getElementById('radarSlider').value = currentFrameIndex;
+                updateRadarFrame(currentFrameIndex);
+            }, 500);
+        }
+
+        function pauseRadarAnimation() {
+            if (radarAnimationTimer) {
+                clearInterval(radarAnimationTimer);
+                radarAnimationTimer = null;
+            }
+        }
+
+        function updateCharts(historicalData) {
+            if (!currentForecastData) return;
+
+            if (historicalData) {
+                currentHistoricalData = historicalData;
+                generateHistoricalChart(historicalData);
+            }
+
+            const timeRange = parseInt(document.getElementById('timeRange').value);
+            
+            document.getElementById('modelInfo24').style.display = timeRange === 24 ? 'block' : 'none';
+            document.getElementById('modelInfo48').style.display = timeRange === 48 ? 'block' : 'none';
+            document.getElementById('modelInfo72').style.display = timeRange === 72 ? 'block' : 'none';
+            document.getElementById('modelInfo120').style.display = timeRange === 120 ? 'block' : 'none';
+            document.getElementById('modelInfo240').style.display = timeRange === 240 ? 'block' : 'none';
+
+            const hourlyData = currentForecastData;
+            
+            const now = new Date();
+            let startIndex = hourlyData.time.findIndex(t => new Date(t) >= now);
+            if (startIndex === -1) startIndex = 0;
+            
+            const hours = hourlyData.time.slice(startIndex, startIndex + timeRange).map(time => 
+                new Date(time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric'})
+            );
+
+            const temps = hourlyData.temperature_2m.slice(startIndex, startIndex + timeRange);
+            const feelsLike = hourlyData.apparent_temperature?.slice(startIndex, startIndex + timeRange) || temps;
+            const precipProb = hourlyData.precipitation_probability?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
+            const totalPrecip = hourlyData.precipitation?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
+            const rain = hourlyData.rain?.slice(startIndex, startIndex + timeRange) || totalPrecip;
+            const snow = hourlyData.snowfall?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
+            const wind = hourlyData.wind_speed_10m.slice(startIndex, startIndex + timeRange);
+            const gusts = hourlyData.wind_gusts_10m?.slice(startIndex, startIndex + timeRange) || wind.map(w => w * 1.3);
+
+            const totalRain = rain.reduce((a, b) => a + (b || 0), 0);
+            const totalSnow = snow.reduce((a, b) => a + (b || 0), 0);
+            const totalAll = totalPrecip.reduce((a, b) => a + (b || 0), 0);
+            
+            document.getElementById('precipTotals').innerHTML = `<strong>Total:</strong> ${totalAll.toFixed(2)}" (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")`;
+
+            if (tempChart) tempChart.destroy();
+            tempChart = new Chart(document.getElementById('tempChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Temperature (°F)',
+                        data: temps,
+                        borderColor: '#4a90e2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }, {
+                        label: 'Feels Like (°F)',
+                        data: feelsLike,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        borderDash: [5, 5]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
+                    scales: {
+                        x: {ticks: {color: '#999', maxRotation: 45, minRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#4a90e2'}, grid: {color: '#2a2a2a'}}
+                    }
+                }
+            });
+
+            if (precipChart) precipChart.destroy();
+            precipChart = new Chart(document.getElementById('precipChart'), {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Precip Probability (%)',
+                        data: precipProb,
+                        backgroundColor: 'rgba(94, 189, 94, 0.6)',
+                        borderColor: '#5ebd5e',
+                        type: 'line',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Rain (in)',
+                        data: rain,
+                        backgroundColor: '#3498db',
+                        yAxisID: 'y1'
+                    }, {
+                        label: 'Snow (in)',
+                        data: snow,
+                        backgroundColor: '#ecf0f1',
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
+                    scales: {
+                        x: {stacked: true, ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {position: 'left', ticks: {color: '#5ebd5e'}, grid: {color: '#2a2a2a'}},
+                        y1: {position: 'right', stacked: true, ticks: {color: '#3498db'}, grid: {drawOnChartArea: false}}
+                    }
+                }
+            });
+
+            let cumulativeRain = [], cumulativeSnow = [], cumulativeTotal = [];
+            let sumRain = 0, sumSnow = 0, sumTotal = 0;
+            for (let i = 0; i < hours.length; i++) {
+                sumRain += rain[i] || 0;
+                sumSnow += snow[i] || 0;
+                sumTotal += totalPrecip[i] || 0;
+                cumulativeRain.push(sumRain);
+                cumulativeSnow.push(sumSnow);
+                cumulativeTotal.push(sumTotal);
+            }
+
+            if (precipAccumChart) precipAccumChart.destroy();
+            precipAccumChart = new Chart(document.getElementById('precipAccumChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Total Accumulation (in)',
+                        data: cumulativeTotal,
+                        borderColor: '#9b59b6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 3,
+                        fill: true
+                    }, {
+                        label: 'Rain Accumulation (in)',
+                        data: cumulativeRain,
+                        borderColor: '#3498db',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }, {
+                        label: 'Snow Accumulation (in)',
+                        data: cumulativeSnow,
+                        borderColor: '#ffffff',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
+                    scales: {
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#9b59b6'}, grid: {color: '#2a2a2a'}}
+                    }
+                }
+            });
+
+            if (windChart) windChart.destroy();
+            windChart = new Chart(document.getElementById('windChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Wind Speed (mph)',
+                        data: wind,
+                        borderColor: '#f39c12',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }, {
+                        label: 'Wind Gusts (mph)',
+                        data: gusts,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        borderDash: [5, 5]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
+                    scales: {
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#f39c12'}, grid: {color: '#2a2a2a'}}
+                    }
+                }
+            });
+
+            generateHeatmap(currentForecastData);
+            generate10DayCards(currentForecastData);
+        }
+
+        function generateHistoricalChart(historicalData) {
+            if (!historicalData?.hourly) return;
+
+            const hours = historicalData.hourly.time.map(time => 
+                new Date(time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric'})
+            );
+            const temps = historicalData.hourly.temperature_2m || [];
+            const wind = historicalData.hourly.wind_speed_10m || [];
+            const gusts = historicalData.hourly.wind_gusts_10m || wind.map(w => w * 1.3);
+            const rain = historicalData.hourly.rain || [];
+            const snow = historicalData.hourly.snowfall || [];
+
+            let cumulativeRain = [], cumulativeSnow = [];
+            let sumRain = 0, sumSnow = 0;
+            for (let i = 0; i < rain.length; i++) {
+                sumRain += rain[i] || 0;
+                sumSnow += snow[i] || 0;
+                cumulativeRain.push(sumRain);
+                cumulativeSnow.push(sumSnow);
+            }
+
+            if (historicalChart) historicalChart.destroy();
+            historicalChart = new Chart(document.getElementById('historicalChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Temperature (°F)',
+                        data: temps,
+                        borderColor: '#4a90e2',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Wind (mph)',
+                        data: wind,
+                        borderColor: '#f39c12',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Gusts (mph)',
+                        data: gusts,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 1,
+                        borderDash: [3, 3],
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Rain (in)',
+                        data: cumulativeRain,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }, {
+                        label: 'Snow (in)',
+                        data: cumulativeSnow,
+                        borderColor: '#ffffff',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
+                    scales: {
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {position: 'left', ticks: {color: '#4a90e2'}, grid: {color: '#2a2a2a'}},
+                        y1: {position: 'right', ticks: {color: '#3498db'}, grid: {drawOnChartArea: false}}
+                    }
+                }
+            });
+        }
+
+        function getWeatherDescription(code) {
+            const codes = {0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',61:'Slight rain',63:'Moderate rain',65:'Heavy rain',71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + heavy hail'};
+            return codes[code] || 'Unknown';
+        }
+
+        function getWeatherClass(code) {
+            // Map weather codes to CSS classes for hero background
+            if (code === 0) return 'clear';
+            if (code === 1) return 'sunny';
+            if (code === 2) return 'partly-cloudy';
+            if (code === 3) return 'overcast';
+            if (code >= 45 && code <= 48) return 'fog';
+            if (code >= 51 && code <= 55) return 'drizzle';
+            if (code >= 61 && code <= 67) return 'rain';
+            if (code >= 71 && code <= 77) return 'snow';
+            if (code >= 80 && code <= 82) return 'rain';
+            if (code >= 85 && code <= 86) return 'snow';
+            if (code >= 95) return 'thunderstorm';
+            return 'cloudy';
+        }
+
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').classList.add('active');
+        }
+
+        function toggleHeatmapExpand() {
+            const extraRows = document.getElementById('heatmapExtraRows');
+            const btn = document.getElementById('expandBtn');
+            
+            if (extraRows && extraRows.classList.contains('expanded')) {
+                extraRows.classList.remove('expanded');
+                btn.textContent = 'Show All Rows';
+            } else if (extraRows) {
+                extraRows.classList.add('expanded');
+                btn.textContent = 'Hide Extra Rows';
+            }
+        }
+
         function toggleCharts() {
             const charts = document.getElementById('detailedCharts');
-            const button = document.getElementById('chartsToggleBtn');
+            const btn = document.getElementById('chartsToggleBtn');
+            
             if (charts.style.display === 'none') {
                 charts.style.display = 'grid';
-                button.textContent = 'Hide Charts';
+                btn.textContent = 'Hide Charts';
             } else {
                 charts.style.display = 'none';
-                button.textContent = 'Show Charts';
-            }
-        }
-        
-        /**
-         * Function to update the Hero Temperature Display with dynamic classes.
-         * You would call this function after fetching new weather data.
-         * * @param {string} temp The temperature number (e.g., "75")
-         * @param {string} condition The weather condition (e.g., "Partly Cloudy")
-         * @param {string} feelsLike The feels like temperature (e.g., "78")
-         * @param {string} conditionClass The class string (e.g., "clear", "rain", "cloudy")
-         */
-        function updateHeroDisplay(temp, condition, feelsLike, conditionClass) {
-            const heroTemp = document.getElementById('heroTemp');
-            const heroTempValueNumber = document.getElementById('heroTempValueNumber');
-            const heroCondition = document.getElementById('heroCondition');
-            const heroFeels = document.getElementById('heroFeels');
-            
-            // 1. Update text content
-            heroTempValueNumber.textContent = temp;
-            heroCondition.textContent = condition;
-            heroFeels.textContent = `Feels like ${feelsLike}°`;
-            
-            // 2. Update dynamic class for background
-            // Remove all existing weather classes
-            heroTemp.classList.remove('clear', 'partly-cloudy', 'cloudy', 'overcast', 'rain', 'drizzle', 'snow', 'thunderstorm', 'fog');
-            
-            // Add the new class
-            if (conditionClass) {
-                heroTemp.classList.add(conditionClass.toLowerCase().replace(/\s/g, '-'));
+                btn.textContent = 'Show Charts';
             }
         }
 
-        // --- DEMONSTRATION OF THE DYNAMIC BACKGROUNDS ---
-        // Uncomment one of these lines to see the effect on page load (assuming your actual data fetch calls this function):
-        // updateHeroDisplay("55", "Cloudy Skies", "50", "Cloudy");
-        // updateHeroDisplay("78", "Thunderstorm Warning", "78", "Thunderstorm");
-        // updateHeroDisplay("32", "Light Snow", "25", "Snow");
+        function getTempClass(temp) {
+            if (temp <= 32) {
+                return 'rgb(155, 89, 182)';
+            } else if (temp <= 49) {
+                const percent = (temp - 32) / (49 - 32);
+                const r = Math.round(155 + (52 - 155) * percent);
+                const g = Math.round(89 + (152 - 89) * percent);
+                const b = Math.round(182 + (219 - 182) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 72) {
+                const percent = (temp - 49) / (72 - 49);
+                const r = Math.round(52 + (39 - 52) * percent);
+                const g = Math.round(152 + (174 - 152) * percent);
+                const b = Math.round(219 + (96 - 219) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 85) {
+                const percent = (temp - 72) / (85 - 72);
+                const r = Math.round(39 + (241 - 39) * percent);
+                const g = Math.round(174 + (196 - 174) * percent);
+                const b = Math.round(96 + (15 - 96) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 99) {
+                const percent = (temp - 85) / (99 - 85);
+                const r = Math.round(241 + (230 - 241) * percent);
+                const g = Math.round(196 + (126 - 196) * percent);
+                const b = Math.round(15 + (34 - 15) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else {
+                const percent = Math.min((temp - 99) / 10, 1);
+                const r = Math.round(230 + (231 - 230) * percent);
+                const g = Math.round(126 + (76 - 126) * percent);
+                const b = Math.round(34 + (60 - 34) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
 
+        function getTempOpacity(temp, temps) {
+            const min = Math.min(...temps);
+            const max = Math.max(...temps);
+            const range = max - min;
+            if (range === 0) return 0.7;
+            const normalized = (temp - min) / range;
+            return 0.4 + (normalized * 0.6);
+        }
+
+        function getWeatherEmoji(code) {
+            const emojis = {
+                0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+                45: '🌫️', 48: '🌫️',
+                51: '🌦️', 53: '🌦️', 55: '🌧️',
+                61: '🌧️', 63: '🌧️', 65: '🌧️',
+                71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+                80: '🌦️', 81: '🌧️', 82: '🌧️',
+                85: '🌨️', 86: '🌨️',
+                95: '⛈️', 96: '⛈️', 99: '⛈️'
+            };
+            return emojis[code] || '☀️';
+        }
+
+        function getSunriseSunset(lat, lng, date) {
+            const day = date.getDate();
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            
+            const a = Math.floor((14 - month) / 12);
+            const y = year + 4800 - a;
+            const m = month + 12 * a - 3;
+            const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            const n = jdn - 2451545 + 0.0008;
+            
+            const J = n - lng / 360;
+            const M = (357.5291 + 0.98560028 * J) % 360;
+            const Mrad = M * Math.PI / 180;
+            const C = 1.9148 * Math.sin(Mrad) + 0.0200 * Math.sin(2 * Mrad) + 0.0003 * Math.sin(3 * Mrad);
+            const lambda = (M + C + 180 + 102.9372) % 360;
+            const lambdaRad = lambda * Math.PI / 180;
+            const Jtransit = 2451545 + J + 0.0053 * Math.sin(Mrad) - 0.0069 * Math.sin(2 * lambdaRad);
+            const delta = Math.asin(Math.sin(lambdaRad) * Math.sin(23.44 * Math.PI / 180));
+            const latRad = lat * Math.PI / 180;
+            const cosOmega = (Math.sin(-0.83 * Math.PI / 180) - Math.sin(latRad) * Math.sin(delta)) / (Math.cos(latRad) * Math.cos(delta));
+            
+            if (cosOmega > 1) {
+                return { sunrise: null, sunset: null };
+            } else if (cosOmega < -1) {
+                return { sunrise: 0, sunset: 24 };
+            }
+            
+            const omega = Math.acos(cosOmega) * 180 / Math.PI;
+            const Jrise = Jtransit - omega / 360;
+            const Jset = Jtransit + omega / 360;
+            const sunrise = ((Jrise - jdn) * 24 + 12) % 24;
+            const sunset = ((Jset - jdn) * 24 + 12) % 24;
+            
+            return {
+                sunrise: sunrise < 0 ? sunrise + 24 : sunrise,
+                sunset: sunset < 0 ? sunset + 24 : sunset
+            };
+        }
+
+        // FIXED generateHeatmap function - resolves the noon data bug + adds sunrise/sunset dimming + uses live/historical data
+        function generateHeatmap(hourlyData) {
+            if (!hourlyData || !hourlyData.time) return;
+
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const tomorrowStart = new Date(todayStart);
+            tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+            // FIX: Build a map of hour (0-23) to data index for today
+            const hourToIndex = {};
+            for (let i = 0; i < hourlyData.time.length; i++) {
+                const time = new Date(hourlyData.time[i]);
+                if (time >= todayStart && time < tomorrowStart) {
+                    const hour = time.getHours();
+                    if (!hourToIndex[hour]) {
+                        hourToIndex[hour] = i;
+                    }
+                }
+            }
+
+            if (Object.keys(hourToIndex).length === 0) return;
+
+            const currentHour = now.getHours();
+            
+            // Get sunrise/sunset for dimming effect
+            let sunriseHour = 6, sunsetHour = 18; // defaults
+            if (currentLatLng) {
+                const sunTimes = getSunriseSunset(currentLatLng.lat, currentLatLng.lng, now);
+                if (sunTimes.sunrise !== null && sunTimes.sunset !== null) {
+                    sunriseHour = sunTimes.sunrise;
+                    sunsetHour = sunTimes.sunset;
+                }
+            }
+
+            // Build historical data map
+            const historicalMap = {};
+            if (currentHistoricalData?.hourly) {
+                currentHistoricalData.hourly.time.forEach((time, idx) => {
+                    const date = new Date(time);
+                    if (date >= todayStart && date < tomorrowStart) {
+                        const hour = date.getHours();
+                        historicalMap[hour] = idx;
+                    }
+                });
+            }
+
+            // Get current conditions for the current hour
+            const currentConditions = {
+                temp: parseFloat(document.getElementById('temp').textContent) || null,
+                feels: parseFloat(document.getElementById('feelsLike').textContent) || null,
+                wind: parseFloat(document.getElementById('wind').textContent) || null,
+                gusts: parseFloat(document.getElementById('windGusts').textContent) || null,
+                precip: parseFloat(document.getElementById('precip').textContent) || null
+            };
+            
+            const allTodayTemps = Object.values(hourToIndex).map(i => hourlyData.temperature_2m[i]);
+
+            let html = '';
+
+            // Header row
+            html += '<div class="heatmap-label"></div>';
+            for (let hour = 0; hour < 24; hour++) {
+                const isPast = hour < currentHour;
+                const isCurrent = hour === currentHour;
+                const hourClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                const hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+                html += `<div class="heatmap-hour ${hourClass}">${hourLabel}</div>`;
+            }
+
+            // Row 1: Conditions
+            html += '<div class="heatmap-label">Conds.</div>';
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    const code = hourlyData.weather_code?.[idx] || 0;
+                    const emoji = getWeatherEmoji(code);
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    const opacity = isDaylight ? 1.0 : 0.75;
+                    html += `<div class="heatmap-cell condition-cell ${cellClass}" style="opacity: ${opacity};">${emoji}</div>`;
+                } else {
+                    html += '<div class="heatmap-cell condition-cell">--</div>';
+                }
+            }
+
+            // Row 2: Temperature
+            html += '<div class="heatmap-label">Temp.</div>';
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    let temp;
+                    if (hour === currentHour && currentConditions.temp !== null) {
+                        temp = Math.round(currentConditions.temp);
+                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        temp = Math.round(currentHistoricalData.hourly.temperature_2m[historicalMap[hour]]);
+                    } else {
+                        temp = Math.round(hourlyData.temperature_2m[idx]);
+                    }
+                    
+                    const color = getTempClass(temp);
+                    const baseOpacity = getTempOpacity(temp, allTodayTemps);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell ${cellClass}" style="background: ${color}; opacity: ${opacity};"><div class="cell-main">${temp}°</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell" style="background: #1a1a1a;">--</div>';
+                }
+            }
+
+            // Row 3: Feels Like
+            html += '<div class="heatmap-label">Feels Like</div>';
+            const allFeelsLike = Object.values(hourToIndex).map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    let feels;
+                    if (hour === currentHour && currentConditions.feels !== null) {
+                        feels = Math.round(currentConditions.feels);
+                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        feels = Math.round(currentHistoricalData.hourly.temperature_2m[historicalMap[hour]]);
+                    } else {
+                        feels = Math.round(hourlyData.apparent_temperature?.[idx] || hourlyData.temperature_2m[idx]);
+                    }
+                    
+                    const color = getTempClass(feels);
+                    const baseOpacity = getTempOpacity(feels, allFeelsLike);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell ${cellClass}" style="background: ${color}; opacity: ${opacity};"><div class="cell-main">${feels}°</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell" style="background: #1a1a1a;">--</div>';
+                }
+            }
+
+            // Row 4: Precipitation Probability
+            html += '<div class="heatmap-label">Precip Chance</div>';
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    const prob = Math.round(hourlyData.precipitation_probability?.[idx] || 0);
+                    const baseOpacity = Math.max(0.05, prob / 100);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell precip-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${prob}%</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell precip-cell" style="opacity: 0.05;">--</div>';
+                }
+            }
+
+            // Extra rows (hidden by default)
+            html += '<div class="extra-rows" id="heatmapExtraRows">';
+
+            // Row 5: Precipitation Amount
+            html += '<div class="heatmap-label">Precip Amount</div>';
+            const allPrecipAmts = Object.values(hourToIndex).map(i => 
+                (hourlyData.rain?.[i] || 0) + (hourlyData.snowfall?.[i] || 0)
+            );
+            const maxPrecip = Math.max(...allPrecipAmts, 0.01);
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    let precipAmt;
+                    if (hour === currentHour && currentConditions.precip !== null) {
+                        precipAmt = currentConditions.precip;
+                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        const histIdx = historicalMap[hour];
+                        precipAmt = (currentHistoricalData.hourly.rain?.[histIdx] || 0) + 
+                                   (currentHistoricalData.hourly.snowfall?.[histIdx] || 0);
+                    } else {
+                        precipAmt = (hourlyData.rain?.[idx] || 0) + (hourlyData.snowfall?.[idx] || 0);
+                    }
+                    
+                    const baseOpacity = Math.max(0.05, precipAmt / maxPrecip);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell precip-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${precipAmt.toFixed(2)}"</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell precip-cell" style="opacity: 0.05;">--</div>';
+                }
+            }
+
+            // Row 6: Wind Speed
+            html += '<div class="heatmap-label">Wind Speed</div>';
+            const allWinds = Object.values(hourToIndex).map(i => hourlyData.wind_speed_10m[i]);
+            const maxWind = Math.max(...allWinds, 1);
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    let wind;
+                    if (hour === currentHour && currentConditions.wind !== null) {
+                        wind = Math.round(currentConditions.wind);
+                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        wind = Math.round(currentHistoricalData.hourly.wind_speed_10m[historicalMap[hour]]);
+                    } else {
+                        wind = Math.round(hourlyData.wind_speed_10m[idx]);
+                    }
+                    
+                    const baseOpacity = Math.max(0.2, wind / maxWind);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${wind}<div class="cell-sub" style="color: #fff;">mph</div></div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell wind-cell" style="opacity: 0.2;">--</div>';
+                }
+            }
+
+            // Row 7: Wind Gusts
+            html += '<div class="heatmap-label">Wind Gusts</div>';
+            const allGusts = Object.values(hourToIndex).map(i => 
+                hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3
+            );
+            const maxGust = Math.max(...allGusts, 1);
+            for (let hour = 0; hour < 24; hour++) {
+                const idx = hourToIndex[hour];
+                if (idx !== undefined) {
+                    let gust;
+                    if (hour === currentHour && currentConditions.gusts !== null) {
+                        gust = Math.round(currentConditions.gusts);
+                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        gust = Math.round(currentHistoricalData.hourly.wind_gusts_10m?.[historicalMap[hour]] || 
+                                         currentHistoricalData.hourly.wind_speed_10m[historicalMap[hour]] * 1.3);
+                    } else {
+                        gust = Math.round(hourlyData.wind_gusts_10m?.[idx] || hourlyData.wind_speed_10m[idx] * 1.3);
+                    }
+                    
+                    const baseOpacity = Math.max(0.2, gust / maxGust);
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main" style="color: #fff;">${gust}<div class="cell-sub" style="color: #fff;">mph</div></div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell wind-cell" style="opacity: 0.2;">--</div>';
+                }
+            }
+
+            html += '</div>'; // Close extra-rows
+
+            document.getElementById('heatmapGrid').innerHTML = html;
+        }
+
+        function generate10DayCards(hourlyData) {
+            if (!hourlyData || !hourlyData.time) return;
+
+            const now = new Date();
+            const cards = [];
+
+            for (let dayOffset = 0; dayOffset < 10; dayOffset++) {
+                const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                dayStart.setDate(dayStart.getDate() + dayOffset);
+                const dayEnd = new Date(dayStart);
+                dayEnd.setDate(dayEnd.getDate() + 1);
+
+                const dayIndices = [];
+                for (let i = 0; i < hourlyData.time.length; i++) {
+                    const time = new Date(hourlyData.time[i]);
+                    if (time >= dayStart && time < dayEnd) {
+                        dayIndices.push(i);
+                    }
+                }
+
+                if (dayIndices.length === 0) continue;
+
+                const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
+                const dayFeels = dayIndices.map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
+                const dayRain = dayIndices.map(i => hourlyData.rain?.[i] || 0);
+                const dayPrecipProb = dayIndices.map(i => hourlyData.precipitation_probability?.[i] || 0);
+                const dayWind = dayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
+                const dayCodes = dayIndices.map(i => hourlyData.weather_code?.[i] || 0);
+
+                const highTemp = Math.max(...dayTemps);
+                const lowTemp = Math.min(...dayTemps);
+                const highFeels = Math.max(...dayFeels);
+                const lowFeels = Math.min(...dayFeels);
+                const totalRain = dayRain.reduce((a, b) => a + b, 0);
+                const maxPrecipProb = Math.max(...dayPrecipProb);
+                const maxWind = Math.max(...dayWind);
+
+                const codeCount = {};
+                dayCodes.forEach(code => codeCount[code] = (codeCount[code] || 0) + 1);
+                const dominantCode = Object.keys(codeCount).reduce((a, b) => codeCount[a] > codeCount[b] ? a : b);
+
+                let rainTime = '';
+                if (maxPrecipProb > 30) {
+                    const rainHours = dayIndices.filter(i => (hourlyData.precipitation_probability?.[i] || 0) > 30);
+                    if (rainHours.length > 0) {
+                        const firstRainHour = new Date(hourlyData.time[rainHours[0]]).getHours();
+                        if (firstRainHour < 12) rainTime = 'Morning';
+                        else if (firstRainHour < 17) rainTime = 'Afternoon';
+                        else rainTime = 'Evening';
+                    }
+                }
+
+                const dayName = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : dayStart.toLocaleDateString('en-US', { weekday: 'long' });
+                const dateStr = dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                cards.push({
+                    dayName,
+                    dateStr,
+                    dayOffset,
+                    highTemp: Math.round(highTemp),
+                    lowTemp: Math.round(lowTemp),
+                    highFeels: Math.round(highFeels),
+                    lowFeels: Math.round(lowFeels),
+                    totalRain: totalRain.toFixed(2),
+                    maxPrecipProb: Math.round(maxPrecipProb),
+                    maxWind: Math.round(maxWind),
+                    rainTime,
+                    emoji: getWeatherEmoji(parseInt(dominantCode)),
+                    condition: getWeatherDescription(parseInt(dominantCode))
+                });
+            }
+
+            let html = '';
+            cards.forEach(card => {
+                const todayClass = card.dayOffset === 0 ? 'today' : '';
+                const highColor = getTempClass(card.highTemp);
+                const lowColor = getTempClass(card.lowTemp);
+                const highFeelsColor = getTempClass(card.highFeels);
+                const lowFeelsColor = getTempClass(card.lowFeels);
+                
+                const avgTemp = (card.highTemp + card.lowTemp) / 2;
+                const bgColorRgb = getTempClass(avgTemp);
+                const bgColorLight = bgColorRgb.replace('rgb(', 'rgba(').replace(')', ', 0.15)');
+                const bgColorDark = bgColorRgb.replace('rgb(', 'rgba(').replace(')', ', 0.05)');
+                
+                html += `
+                    <div class="day-card ${todayClass}" onclick="openHourlyModal(${card.dayOffset})" style="background: linear-gradient(135deg, ${bgColorLight} 0%, ${bgColorDark} 100%), #252525;">
+                        <div class="day-card-header">
+                            <div>
+                                <div class="day-card-day">${card.dayName}</div>
+                                <div class="day-card-date">${card.dateStr}</div>
+                            </div>
+                        </div>
+                        <div class="day-card-condition">
+                            <div class="day-condition-icon">${card.emoji}</div>
+                            <div class="day-condition-text">${card.condition}</div>
+                        </div>
+                        <div class="day-card-temps">
+                            <div class="day-temp-high">
+                                <div class="day-temp-label">High</div>
+                                <div class="day-temp-value" style="color: ${highColor};">${card.highTemp}°</div>
+                            </div>
+                            <div class="day-temp-low">
+                                <div class="day-temp-label">Low</div>
+                                <div class="day-temp-value" style="color: ${lowColor};">${card.lowTemp}°</div>
+                            </div>
+                        </div>
+                        <div class="day-card-stats">
+                            <div class="day-stat-row">
+                                <div class="day-stat-label">💧 Rain</div>
+                                <div class="day-stat-value rain">${card.maxPrecipProb}% • ${card.totalRain}"${card.rainTime ? `<span class="day-rain-time">${card.rainTime}</span>` : ''}</div>
+                            </div>
+                            <div class="day-stat-row">
+                                <div class="day-stat-label">💨 Wind</div>
+                                <div class="day-stat-value wind">${card.maxWind} mph gusts</div>
+                            </div>
+                            <div class="day-stat-row">
+                                <div class="day-stat-label">🌡️ Feels Like</div>
+                                <div class="day-stat-value feels"><span style="color: ${highFeelsColor};">${card.highFeels}°</span> / <span style="color: ${lowFeelsColor};">${card.lowFeels}°</span></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('dailyCardsGrid').innerHTML = html;
+        }
+
+        function openHourlyModal(dayOffset) {
+            if (!currentForecastData) return;
+
+            const now = new Date();
+            const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            dayStart.setDate(dayStart.getDate() + dayOffset);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const dayIndices = [];
+            for (let i = 0; i < currentForecastData.time.length; i++) {
+                const time = new Date(currentForecastData.time[i]);
+                if (time >= dayStart && time < dayEnd) {
+                    dayIndices.push(i);
+                }
+            }
+
+            if (dayIndices.length === 0) return;
+
+            const dayName = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : dayStart.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateStr = dayStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            document.getElementById('modalDayTitle').textContent = `${dayName} - ${dateStr}`;
+
+            let html = '<table class="hourly-table"><thead><tr><th>Time</th><th>Temp</th><th>Feels</th><th>Precip %</th><th>Rain</th><th>Snow</th><th>Wind</th><th>Gusts</th></tr></thead><tbody>';
+            
+            dayIndices.forEach(idx => {
+                const time = new Date(currentForecastData.time[idx]);
+                const timeStr = time.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const temp = Math.round(currentForecastData.temperature_2m[idx]);
+                const feels = Math.round(currentForecastData.apparent_temperature?.[idx] || currentForecastData.temperature_2m[idx]);
+                const precipProb = Math.round(currentForecastData.precipitation_probability?.[idx] || 0);
+                const rain = (currentForecastData.rain?.[idx] || 0).toFixed(2);
+                const snow = (currentForecastData.snowfall?.[idx] || 0).toFixed(2);
+                const wind = Math.round(currentForecastData.wind_speed_10m[idx]);
+                const gusts = Math.round(currentForecastData.wind_gusts_10m?.[idx] || currentForecastData.wind_speed_10m[idx] * 1.3);
+
+                html += `<tr>
+                    <td>${timeStr}</td>
+                    <td class="temp-cell">${temp}°F</td>
+                    <td class="temp-cell">${feels}°F</td>
+                    <td class="precip-cell" style="color: #fff;">${precipProb}%</td>
+                    <td class="rain-cell">${rain}"</td>
+                    <td class="snow-cell">${snow}"</td>
+                    <td class="wind-cell" style="color: #fff;">${wind} mph</td>
+                    <td class="wind-cell" style="color: #fff;">${gusts} mph</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('modalHourlyTable').innerHTML = html;
+            document.getElementById('hourlyModal').classList.add('active');
+        }
+
+        function closeHourlyModal() {
+            document.getElementById('hourlyModal').classList.remove('active');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('hourlyModal');
+            if (event.target === modal) {
+                closeHourlyModal();
+            }
+        };
+
+        window.addEventListener('load', () => getForecast(28.2189, -82.4526));
     </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js');
+  }
+</script>
 </body>
 </html>
