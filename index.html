@@ -436,11 +436,11 @@
             </div>
 
             <div class="model-selector">
-                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (US)</button>
-                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS</button>
-                <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (US)</button>
-                <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF</button>
-                <button class="model-btn" data-model="blend" onclick="selectModel('blend')">Blend (Average)</button>
+                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (NOAA)</button>
+                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS (NOAA)</button>
+                <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (NOAA)</button>
+                <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF (NOAA)</button>
+                <button class="model-btn" data-model="bestmatch" onclick="selectModel('bestmatch')">Best Match (Open-Meteo)</button>
             </div>
         </div>
 
@@ -672,31 +672,173 @@
             document.getElementById('forecast').classList.remove('active');
             document.getElementById('error').classList.remove('active');
 
-            if (currentModel === 'blend') {
+            if (currentModel === 'bestmatch') {
+                await fetchOpenMeteoBestMatch(lat, lng);
+            } else if (currentModel === 'blend') {
                 await fetchBlendedForecast(lat, lng);
             } else {
                 await fetchSingleModel(lat, lng);
             }
         }
 
+        // Fetch HRRR data from Weather.gov (NOAA's official API)
+        async function fetchWeatherGovHRRR(lat, lng) {
+            try {
+                // Check if location is in US
+                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
+                if (!isUS) {
+                    showError('HRRR is only available for US locations. Switching to GFS...');
+                    currentModel = 'gfs';
+                    selectModel('gfs');
+                    await fetchSingleModel(lat, lng);
+                    return;
+                }
+
+                // Step 1: Get grid point from Weather.gov
+                const pointsResponse = await fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
+                    headers: {
+                        'User-Agent': '(WeatherApp, contact@example.com)',
+                        'Accept': 'application/geo+json'
+                    }
+                });
+
+                if (!pointsResponse.ok) {
+                    throw new Error(`Weather.gov API error: ${pointsResponse.status}`);
+                }
+
+                const pointsData = await pointsResponse.json();
+                const forecastHourlyUrl = pointsData.properties.forecastHourly;
+                const gridId = pointsData.properties.gridId;
+                const gridX = pointsData.properties.gridX;
+                const gridY = pointsData.properties.gridY;
+
+                // Step 2: Get hourly forecast (this uses HRRR model)
+                const forecastResponse = await fetch(forecastHourlyUrl, {
+                    headers: {
+                        'User-Agent': '(WeatherApp, contact@example.com)',
+                        'Accept': 'application/geo+json'
+                    }
+                });
+
+                if (!forecastResponse.ok) {
+                    throw new Error(`Forecast API error: ${forecastResponse.status}`);
+                }
+
+                const forecastData = await forecastResponse.json();
+                
+                console.log('Weather.gov HRRR data:', forecastData);
+
+                // Get location name
+                try {
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const geoData = await geoResponse.json();
+                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+                } catch (e) {
+                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                }
+
+                document.getElementById('modelName').textContent = 'HRRR via NOAA Weather.gov (3km)';
+                
+                const periods = forecastData.properties.periods;
+                const now = new Date();
+                document.getElementById('modelRun').textContent = `Updated: ${now.toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    timeZoneName: 'short'
+                })} | HRRR Model`;
+
+                // Current conditions from first period
+                const current = periods[0];
+                document.getElementById('temp').textContent = `${current.temperature}°F`;
+                document.getElementById('feelsLike').textContent = current.apparentTemperature ? `${current.apparentTemperature.value}°F` : 'N/A';
+                document.getElementById('wind').textContent = `${current.windSpeed}`;
+                document.getElementById('humidity').textContent = current.relativeHumidity?.value ? `${Math.round(current.relativeHumidity.value)}%` : 'N/A';
+                document.getElementById('precip').textContent = current.probabilityOfPrecipitation?.value ? `${current.probabilityOfPrecipitation.value}%` : '0%';
+                document.getElementById('pressure').textContent = 'N/A';
+                document.getElementById('conditions').textContent = current.shortForecast;
+
+                // Convert Weather.gov format to our format
+                const hourlyData = {
+                    time: [],
+                    temperature_2m: [],
+                    apparent_temperature: [],
+                    precipitation_probability: [],
+                    precipitation: [],
+                    rain: [],
+                    snowfall: [],
+                    wind_speed_10m: []
+                };
+
+                periods.forEach(period => {
+                    hourlyData.time.push(period.startTime);
+                    hourlyData.temperature_2m.push(period.temperature);
+                    hourlyData.apparent_temperature.push(period.temperature); // Weather.gov doesn't always have feels like
+                    hourlyData.precipitation_probability.push(period.probabilityOfPrecipitation?.value || 0);
+                    hourlyData.precipitation.push(0); // Weather.gov doesn't provide accumulation in hourly
+                    hourlyData.rain.push(0);
+                    hourlyData.snowfall.push(0);
+                    
+                    // Parse wind speed (comes as "10 mph" or "5 to 10 mph")
+                    const windMatch = period.windSpeed.match(/(\d+)/);
+                    const windSpeed = windMatch ? parseInt(windMatch[1]) : 0;
+                    hourlyData.wind_speed_10m.push(windSpeed);
+                });
+
+                currentForecastData = hourlyData;
+
+                // Fetch historical data from Open-Meteo (Weather.gov doesn't have historical)
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+
+                updateCharts(historicalData);
+                initRadar(lat, lng);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('forecast').classList.add('active');
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading HRRR from Weather.gov: ${err.message}. Try GFS instead.`);
+                console.error('Weather.gov error:', err);
+            }
+        }
+
         async function fetchSingleModel(lat, lng) {
+            // Use Weather.gov API for HRRR (US only)
+            if (currentModel === 'hrrr') {
+                await fetchWeatherGovHRRR(lat, lng);
+                return;
+            }
+            
+            // For other models, use Open-Meteo with specific model parameters
             let modelParam = 'gfs_seamless';
             let modelDisplayName = 'GFS (Global Forecast System)';
             let forecastDays = 7;
             let apiUrl = 'https://api.open-meteo.com/v1/forecast';
             
-            if (currentModel === 'hrrr') {
-                modelParam = 'best_match';
-                modelDisplayName = 'HRRR (High Resolution Rapid Refresh) - 3km';
-                forecastDays = 2;
-            } else if (currentModel === 'nam') {
-                modelParam = 'best_match';
-                modelDisplayName = 'NAM (North American Mesoscale)';
+            if (currentModel === 'nam') {
+                modelParam = 'gfs_seamless'; // NAM not available directly, using GFS
+                modelDisplayName = 'NAM (North American Mesoscale) - via Open-Meteo';
                 forecastDays = 3;
+                showError('Note: NAM direct access not available. Using GFS instead. For real NAM-like data, try Best Match for US locations.');
             } else if (currentModel === 'ecmwf') {
                 modelParam = 'ecmwf_ifs025';
-                modelDisplayName = 'ECMWF IFS';
+                modelDisplayName = 'ECMWF IFS (25km)';
                 forecastDays = 10;
+            } else if (currentModel === 'gfs') {
+                modelParam = 'gfs_seamless';
+                modelDisplayName = 'GFS (Global Forecast System, 13km)';
+                forecastDays = 7;
             }
 
             try {
@@ -762,6 +904,74 @@
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
                 showError(`Error loading weather data: ${err.message}`);
+            }
+        }
+
+        // Fetch using Open-Meteo's best_match (auto-selects best model for location)
+        async function fetchOpenMeteoBestMatch(lat, lng) {
+            try {
+                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
+                const url = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}`);
+                }
+                
+                const data = await response.json();
+
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+
+                try {
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const geoData = await geoResponse.json();
+                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+                } catch (e) {
+                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                }
+
+                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
+                document.getElementById('modelName').textContent = `Best Match (likely ${isUS ? 'NAM/HRRR' : 'GFS'} for this location)`;
+                
+                if (data.current && data.current.time) {
+                    const runTime = new Date(data.current.time);
+                    document.getElementById('modelRun').textContent = `Updated: ${runTime.toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    })}`;
+                }
+
+                document.getElementById('temp').textContent = `${Math.round(data.current.temperature_2m)}°F`;
+                document.getElementById('feelsLike').textContent = data.current.apparent_temperature ? `${Math.round(data.current.apparent_temperature)}°F` : 'N/A';
+                document.getElementById('wind').textContent = `${Math.round(data.current.wind_speed_10m)} mph`;
+                document.getElementById('humidity').textContent = `${data.current.relative_humidity_2m}%`;
+                document.getElementById('precip').textContent = data.current.precipitation !== null ? `${data.current.precipitation.toFixed(2)} in` : '0.00 in';
+                document.getElementById('pressure').textContent = data.current.surface_pressure ? `${Math.round(data.current.surface_pressure)} mb` : 'N/A';
+                document.getElementById('conditions').textContent = getWeatherDescription(data.current.weather_code);
+
+                currentForecastData = data.hourly;
+                updateCharts(historicalData);
+                initRadar(lat, lng);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('forecast').classList.add('active');
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading Best Match data: ${err.message}`);
             }
         }
 
