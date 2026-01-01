@@ -455,7 +455,7 @@
             </div>
 
             <div class="model-selector">
-                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR-Sub (Ultra Accurate)</button>
+                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (High Res)</button>
                 <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS</button>
                 <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (US)</button>
                 <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF</button>
@@ -703,14 +703,14 @@
             }
         }
 
-        // NEW: HRRR-subhourly function for ultra-accurate short-term forecasts
+        // HRRR function for high-resolution short-term forecasts (3km, hourly updates, 48hr forecast)
         async function fetchHRRRSubhourly(lat, lng) {
             try {
                 // Check if location is in US (HRRR coverage)
                 const isUS = (lat >= 20 && lat <= 55 && lng >= -130 && lng <= -60);
                 
                 if (!isUS) {
-                    showError('HRRR-subhourly is only available for US locations. Switching to ECMWF...');
+                    showError('HRRR is only available for US locations. Switching to ECMWF...');
                     currentModel = 'ecmwf';
                     selectModel('ecmwf');
                     await fetchSingleModel(lat, lng);
@@ -719,10 +719,10 @@
 
                 const apiUrl = 'https://api.open-meteo.com/v1/forecast';
                 
-                // Fetch HRRR-subhourly for 0-18 hours with 15-minute resolution
-                const hrrrUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&minutely_15=temperature_2m,apparent_temperature,precipitation,rain,snowfall,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=1&models=hrrr_subhourly`;
+                // Fetch HRRR for 0-48 hours (3km resolution, hourly)
+                const hrrrUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=2&models=best_match`;
                 
-                // Also fetch GFS for extended forecast (18+ hours)
+                // Also fetch GFS for extended forecast (48+ hours)
                 const gfsUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`;
                 
                 const [hrrrResponse, gfsResponse] = await Promise.all([
@@ -737,7 +737,7 @@
                 const hrrrData = await hrrrResponse.json();
                 const gfsData = await gfsResponse.json();
                 
-                console.log('HRRR-subhourly data:', hrrrData);
+                console.log('HRRR data:', hrrrData);
                 console.log('GFS extended data:', gfsData);
 
                 // Get location name
@@ -750,7 +750,7 @@
                     document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
                 }
 
-                document.getElementById('modelName').textContent = 'HRRR-Subhourly (15-min) + GFS Extended';
+                document.getElementById('modelName').textContent = 'HRRR (3km, Hourly) + GFS Extended';
                 
                 if (hrrrData.current && hrrrData.current.time) {
                     const runTime = new Date(hrrrData.current.time);
@@ -760,7 +760,7 @@
                         hour: 'numeric', 
                         minute: '2-digit',
                         timeZoneName: 'short'
-                    })} | Updates every 15 minutes`;
+                    })} | 3km resolution, updates hourly`;
                 }
 
                 // Use HRRR current conditions (most accurate)
@@ -772,12 +772,8 @@
                 document.getElementById('pressure').textContent = hrrrData.current.surface_pressure ? `${Math.round(hrrrData.current.surface_pressure)} mb` : 'N/A';
                 document.getElementById('conditions').textContent = getWeatherDescription(hrrrData.current.weather_code);
 
-                // Combine HRRR 15-minute data with GFS hourly data
-                // Convert HRRR minutely_15 to hourly by averaging every 4 data points
-                const hrrrHourly = convertMinutelyToHourly(hrrrData.minutely_15);
-                
-                // Merge HRRR (first 18 hours) with GFS (18+ hours)
-                const mergedHourly = mergeForecasts(hrrrHourly, gfsData.hourly, 18);
+                // Merge HRRR (first 48 hours) with GFS (48+ hours)
+                const mergedHourly = mergeForecasts(hrrrData.hourly, gfsData.hourly, 48);
                 
                 currentForecastData = mergedHourly;
 
@@ -802,53 +798,6 @@
                 document.getElementById('loading').style.display = 'none';
                 showError(`Error loading HRRR data: ${err.message}`);
             }
-        }
-
-        // Convert 15-minute data to hourly averages
-        function convertMinutelyToHourly(minutelyData) {
-            const hourly = {
-                time: [],
-                temperature_2m: [],
-                apparent_temperature: [],
-                precipitation: [],
-                rain: [],
-                snowfall: [],
-                wind_speed_10m: []
-            };
-
-            if (!minutelyData || !minutelyData.time) return hourly;
-
-            // Group every 4 data points (15min * 4 = 1 hour)
-            for (let i = 0; i < minutelyData.time.length; i += 4) {
-                const chunk = {
-                    temp: [],
-                    feels: [],
-                    precip: [],
-                    rain: [],
-                    snow: [],
-                    wind: []
-                };
-
-                for (let j = 0; j < 4 && i + j < minutelyData.time.length; j++) {
-                    const idx = i + j;
-                    chunk.temp.push(minutelyData.temperature_2m?.[idx] || 0);
-                    chunk.feels.push(minutelyData.apparent_temperature?.[idx] || 0);
-                    chunk.precip.push(minutelyData.precipitation?.[idx] || 0);
-                    chunk.rain.push(minutelyData.rain?.[idx] || 0);
-                    chunk.snow.push(minutelyData.snowfall?.[idx] || 0);
-                    chunk.wind.push(minutelyData.wind_speed_10m?.[idx] || 0);
-                }
-
-                hourly.time.push(minutelyData.time[i]);
-                hourly.temperature_2m.push(chunk.temp.reduce((a, b) => a + b, 0) / chunk.temp.length);
-                hourly.apparent_temperature.push(chunk.feels.reduce((a, b) => a + b, 0) / chunk.feels.length);
-                hourly.precipitation.push(chunk.precip.reduce((a, b) => a + b, 0)); // Sum for hour
-                hourly.rain.push(chunk.rain.reduce((a, b) => a + b, 0)); // Sum for hour
-                hourly.snowfall.push(chunk.snow.reduce((a, b) => a + b, 0)); // Sum for hour
-                hourly.wind_speed_10m.push(chunk.wind.reduce((a, b) => a + b, 0) / chunk.wind.length);
-            }
-
-            return hourly;
         }
 
         // Merge short-term accurate forecast with longer-term forecast
@@ -896,7 +845,7 @@
             return merged;
         }
 
-        // Smart Blend: Uses HRRR-sub for 0-18h, then blends NAM/GFS/ECMWF for 18+
+        // Smart Blend: Uses HRRR for 0-48h, then blends NAM/GFS/ECMWF for 48+
         async function fetchSmartBlend(lat, lng) {
             try {
                 const apiUrl = 'https://api.open-meteo.com/v1/forecast';
@@ -905,12 +854,12 @@
                 let modelsToFetch = [];
                 let modelNames = [];
                 
-                // For US: Use HRRR-sub for short term
+                // For US: Use HRRR for short term (best_match gives HRRR in US)
                 if (isUS) {
                     modelsToFetch.push(
-                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&minutely_15=temperature_2m,apparent_temperature,precipitation,rain,snowfall,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=1&models=hrrr_subhourly`)
+                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=2&models=best_match`)
                     );
-                    modelNames.push('HRRR-Sub');
+                    modelNames.push('HRRR');
                 }
                 
                 // Always fetch GFS and ECMWF for medium/long range
@@ -919,14 +868,6 @@
                     fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
                 );
                 modelNames.push('GFS', 'ECMWF');
-                
-                // Add NAM for US
-                if (isUS) {
-                    modelsToFetch.push(
-                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`)
-                    );
-                    modelNames.push('NAM');
-                }
                 
                 const responses = await Promise.all(modelsToFetch);
                 const modelData = await Promise.all(responses.map(r => r.json()));
@@ -970,13 +911,11 @@
                 let blendedHourly;
                 
                 if (isUS) {
-                    // Convert HRRR minutely to hourly
-                    const hrrrHourly = convertMinutelyToHourly(modelData[0].minutely_15);
-                    
-                    // Get longer-range models (skip first entry which is HRRR)
+                    // Use HRRR for short term, blend others for longer
+                    const hrrrData = modelData[0];
                     const longerModels = modelData.slice(1);
                     
-                    // Blend the longer models for 18+ hours
+                    // Blend the longer models for 48+ hours
                     const maxHours = Math.min(...longerModels.map(d => d.hourly.time.length));
                     const blendedLonger = {
                         time: longerModels[0].hourly.time.slice(0, maxHours),
@@ -1000,7 +939,7 @@
                     }
                     
                     // Merge HRRR with blended longer forecast
-                    blendedHourly = mergeForecasts(hrrrHourly, blendedLonger, 18);
+                    blendedHourly = mergeForecasts(hrrrData.hourly, blendedLonger, 48);
                 } else {
                     // No HRRR, just blend all models
                     const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
