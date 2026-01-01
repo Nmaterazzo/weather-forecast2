@@ -1899,9 +1899,9 @@
                     const emoji = getWeatherEmoji(code);
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    const opacity = isDaylight ? 1.0 : 0.55;
+                    const opacity = isDaylight ? 1.0 : 0.75;
                     html += `<div class="heatmap-cell condition-cell ${cellClass}" style="opacity: ${opacity};">${emoji}</div>`;
                 } else {
                     html += '<div class="heatmap-cell condition-cell">--</div>';
@@ -1924,8 +1924,8 @@
                     
                     const color = getTempClass(temp);
                     const baseOpacity = getTempOpacity(temp, allTodayTemps);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
@@ -1952,8 +1952,8 @@
                     
                     const color = getTempClass(feels);
                     const baseOpacity = getTempOpacity(feels, allFeelsLike);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
@@ -1970,8 +1970,8 @@
                 if (idx !== undefined) {
                     const prob = Math.round(hourlyData.precipitation_probability?.[idx] || 0);
                     const baseOpacity = Math.max(0.05, prob / 100);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
@@ -2005,8 +2005,8 @@
                     }
                     
                     const baseOpacity = Math.max(0.05, precipAmt / maxPrecip);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
@@ -2033,8 +2033,8 @@
                     }
                     
                     const baseOpacity = Math.max(0.2, wind / maxWind);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
@@ -2064,8 +2064,8 @@
                     }
                     
                     const baseOpacity = Math.max(0.2, gust / maxGust);
-                    const isDaylight = hour >= sunriseHour && hour <= sunsetHour;
-                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.55;
+                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                    const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
