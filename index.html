@@ -1394,7 +1394,6 @@
             document.getElementById('precipTotals').innerHTML = `<strong>Total:</strong> ${totalAll.toFixed(2)}" (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")`;
 
             if (historicalData) generateHistoricalChart(historicalData);
-            generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts);
 
             if (tempChart) tempChart.destroy();
             tempChart = new Chart(document.getElementById('tempChart'), {
@@ -1629,24 +1628,6 @@
                     }
                 }
             });
-        }
-
-        function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts) {
-            let html = '<table class="hourly-table"><thead><tr><th>Time</th><th>Temp</th><th>Feels</th><th>Precip %</th><th>Rain</th><th>Snow</th><th>Wind</th><th>Gusts</th></tr></thead><tbody>';
-            for (let i = 0; i < hours.length; i++) {
-                html += `<tr>
-                    <td>${hours[i]}</td>
-                    <td class="temp-cell">${Math.round(temps[i])}°F</td>
-                    <td class="temp-cell">${Math.round(feelsLike[i])}°F</td>
-                    <td class="precip-cell">${Math.round(precipProb[i])}%</td>
-                    <td class="rain-cell">${rain[i].toFixed(2)}"</td>
-                    <td class="snow-cell">${snow[i].toFixed(2)}"</td>
-                    <td class="wind-cell">${Math.round(wind[i])} mph</td>
-                    <td class="wind-cell">${Math.round(gusts[i])} mph</td>
-                </tr>`;
-            }
-            html += '</tbody></table>';
-            document.getElementById('hourlyTable').innerHTML = html;
         }
 
         function getWeatherDescription(code) {
