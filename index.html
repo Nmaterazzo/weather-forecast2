@@ -403,25 +403,6 @@
             color: #9b59b6;
         }
 
-        .model-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-
-        .model-badge.hrrr {
-            background: #10b981;
-            color: #fff;
-        }
-
-        .model-badge.standard {
-            background: #6366f1;
-            color: #fff;
-        }
-
         @media (max-width: 768px) {
             .input-group {
                 grid-template-columns: 1fr;
@@ -455,11 +436,11 @@
             </div>
 
             <div class="model-selector">
-                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (High Res)</button>
+                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (US)</button>
                 <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS</button>
                 <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (US)</button>
                 <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF</button>
-                <button class="model-btn" data-model="blend" onclick="selectModel('blend')">Smart Blend</button>
+                <button class="model-btn" data-model="blend" onclick="selectModel('blend')">Blend (Average)</button>
             </div>
         </div>
 
@@ -603,7 +584,7 @@
     </div>
 
     <script>
-        let currentModel = 'hrrr'; // Default to HRRR-subhourly for best accuracy
+        let currentModel = 'hrrr';
         let tempChart = null;
         let precipChart = null;
         let precipAccumChart = null;
@@ -613,9 +594,6 @@
         let radarMap = null;
         let radarMarker = null;
         let radarLayer = null;
-        let goesMap = null;
-        let goesMarker = null;
-        let goesLayer = null;
         let radarFrames = [];
         let radarAnimationTimer = null;
         let currentFrameIndex = 0;
@@ -695,298 +673,9 @@
             document.getElementById('error').classList.remove('active');
 
             if (currentModel === 'blend') {
-                await fetchSmartBlend(lat, lng);
-            } else if (currentModel === 'hrrr') {
-                await fetchHRRRSubhourly(lat, lng);
+                await fetchBlendedForecast(lat, lng);
             } else {
                 await fetchSingleModel(lat, lng);
-            }
-        }
-
-        // HRRR function for high-resolution short-term forecasts (3km, hourly updates, 48hr forecast)
-        async function fetchHRRRSubhourly(lat, lng) {
-            try {
-                // Check if location is in US (HRRR coverage)
-                const isUS = (lat >= 20 && lat <= 55 && lng >= -130 && lng <= -60);
-                
-                if (!isUS) {
-                    showError('HRRR is only available for US locations. Switching to ECMWF...');
-                    currentModel = 'ecmwf';
-                    selectModel('ecmwf');
-                    await fetchSingleModel(lat, lng);
-                    return;
-                }
-
-                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
-                
-                // Fetch HRRR for 0-48 hours (3km resolution, hourly)
-                const hrrrUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=2&models=best_match`;
-                
-                // Also fetch GFS for extended forecast (48+ hours)
-                const gfsUrl = `${apiUrl}?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`;
-                
-                const [hrrrResponse, gfsResponse] = await Promise.all([
-                    fetch(hrrrUrl),
-                    fetch(gfsUrl)
-                ]);
-                
-                if (!hrrrResponse.ok || !gfsResponse.ok) {
-                    throw new Error('Failed to fetch HRRR or GFS data');
-                }
-                
-                const hrrrData = await hrrrResponse.json();
-                const gfsData = await gfsResponse.json();
-                
-                console.log('HRRR data:', hrrrData);
-                console.log('GFS extended data:', gfsData);
-
-                // Get location name
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                document.getElementById('modelName').textContent = 'HRRR (3km, Hourly) + GFS Extended';
-                
-                if (hrrrData.current && hrrrData.current.time) {
-                    const runTime = new Date(hrrrData.current.time);
-                    document.getElementById('modelRun').textContent = `HRRR updated: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })} | 3km resolution, updates hourly`;
-                }
-
-                // Use HRRR current conditions (most accurate)
-                document.getElementById('temp').textContent = `${Math.round(hrrrData.current.temperature_2m)}°F`;
-                document.getElementById('feelsLike').textContent = hrrrData.current.apparent_temperature ? `${Math.round(hrrrData.current.apparent_temperature)}°F` : 'N/A';
-                document.getElementById('wind').textContent = `${Math.round(hrrrData.current.wind_speed_10m)} mph`;
-                document.getElementById('humidity').textContent = `${hrrrData.current.relative_humidity_2m}%`;
-                document.getElementById('precip').textContent = hrrrData.current.precipitation !== null ? `${hrrrData.current.precipitation.toFixed(2)} in` : '0.00 in';
-                document.getElementById('pressure').textContent = hrrrData.current.surface_pressure ? `${Math.round(hrrrData.current.surface_pressure)} mb` : 'N/A';
-                document.getElementById('conditions').textContent = getWeatherDescription(hrrrData.current.weather_code);
-
-                // Merge HRRR (first 48 hours) with GFS (48+ hours)
-                const mergedHourly = mergeForecasts(hrrrData.hourly, gfsData.hourly, 48);
-                
-                currentForecastData = mergedHourly;
-
-                // Fetch historical data
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-
-                updateCharts(historicalData);
-                initRadar(lat, lng);
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading HRRR data: ${err.message}`);
-            }
-        }
-
-        // Merge short-term accurate forecast with longer-term forecast
-        function mergeForecasts(shortTerm, longTerm, cutoffHours) {
-            const merged = {
-                time: [],
-                temperature_2m: [],
-                apparent_temperature: [],
-                precipitation_probability: [],
-                precipitation: [],
-                rain: [],
-                snowfall: [],
-                wind_speed_10m: []
-            };
-
-            // Use short-term data for first cutoffHours
-            const shortTermLength = Math.min(shortTerm.time.length, cutoffHours);
-            for (let i = 0; i < shortTermLength; i++) {
-                merged.time.push(shortTerm.time[i]);
-                merged.temperature_2m.push(shortTerm.temperature_2m[i]);
-                merged.apparent_temperature.push(shortTerm.apparent_temperature?.[i] || shortTerm.temperature_2m[i]);
-                merged.precipitation_probability.push(0); // HRRR doesn't have prob
-                merged.precipitation.push(shortTerm.precipitation?.[i] || 0);
-                merged.rain.push(shortTerm.rain?.[i] || 0);
-                merged.snowfall.push(shortTerm.snowfall?.[i] || 0);
-                merged.wind_speed_10m.push(shortTerm.wind_speed_10m[i]);
-            }
-
-            // Append long-term data after cutoff
-            const cutoffTime = new Date(shortTerm.time[shortTermLength - 1]);
-            for (let i = 0; i < longTerm.time.length; i++) {
-                const currentTime = new Date(longTerm.time[i]);
-                if (currentTime > cutoffTime) {
-                    merged.time.push(longTerm.time[i]);
-                    merged.temperature_2m.push(longTerm.temperature_2m[i]);
-                    merged.apparent_temperature.push(longTerm.apparent_temperature?.[i] || longTerm.temperature_2m[i]);
-                    merged.precipitation_probability.push(longTerm.precipitation_probability?.[i] || 0);
-                    merged.precipitation.push(longTerm.precipitation?.[i] || 0);
-                    merged.rain.push(longTerm.rain?.[i] || 0);
-                    merged.snowfall.push(longTerm.snowfall?.[i] || 0);
-                    merged.wind_speed_10m.push(longTerm.wind_speed_10m[i]);
-                }
-            }
-
-            return merged;
-        }
-
-        // Smart Blend: Uses HRRR for 0-48h, then blends NAM/GFS/ECMWF for 48+
-        async function fetchSmartBlend(lat, lng) {
-            try {
-                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
-                const isUS = (lat >= 20 && lat <= 55 && lng >= -130 && lng <= -60);
-                
-                let modelsToFetch = [];
-                let modelNames = [];
-                
-                // For US: Use HRRR for short term (best_match gives HRRR in US)
-                if (isUS) {
-                    modelsToFetch.push(
-                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=2&models=best_match`)
-                    );
-                    modelNames.push('HRRR');
-                }
-                
-                // Always fetch GFS and ECMWF for medium/long range
-                modelsToFetch.push(
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`),
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
-                );
-                modelNames.push('GFS', 'ECMWF');
-                
-                const responses = await Promise.all(modelsToFetch);
-                const modelData = await Promise.all(responses.map(r => r.json()));
-                
-                console.log('Smart Blend models:', modelNames);
-
-                // Get location
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                document.getElementById('modelName').textContent = `Smart Blend (${modelNames.join(' + ')})`;
-                
-                if (modelData[0].current) {
-                    const runTime = new Date(modelData[0].current.time);
-                    document.getElementById('modelRun').textContent = `Latest: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })}`;
-                }
-
-                // Use HRRR current if available, else blend
-                const currentSource = isUS ? modelData[0] : modelData[0];
-                document.getElementById('temp').textContent = `${Math.round(currentSource.current.temperature_2m)}°F`;
-                document.getElementById('feelsLike').textContent = `${Math.round(currentSource.current.apparent_temperature || currentSource.current.temperature_2m)}°F`;
-                document.getElementById('wind').textContent = `${Math.round(currentSource.current.wind_speed_10m)} mph`;
-                document.getElementById('humidity').textContent = `${currentSource.current.relative_humidity_2m}%`;
-                document.getElementById('precip').textContent = `${(currentSource.current.precipitation || 0).toFixed(2)} in`;
-                document.getElementById('pressure').textContent = `${Math.round(currentSource.current.surface_pressure || 0)} mb`;
-                document.getElementById('conditions').textContent = getWeatherDescription(currentSource.current.weather_code);
-
-                // Smart blending logic
-                let blendedHourly;
-                
-                if (isUS) {
-                    // Use HRRR for short term, blend others for longer
-                    const hrrrData = modelData[0];
-                    const longerModels = modelData.slice(1);
-                    
-                    // Blend the longer models for 48+ hours
-                    const maxHours = Math.min(...longerModels.map(d => d.hourly.time.length));
-                    const blendedLonger = {
-                        time: longerModels[0].hourly.time.slice(0, maxHours),
-                        temperature_2m: [],
-                        apparent_temperature: [],
-                        precipitation_probability: [],
-                        precipitation: [],
-                        rain: [],
-                        snowfall: [],
-                        wind_speed_10m: []
-                    };
-
-                    for (let i = 0; i < maxHours; i++) {
-                        blendedLonger.temperature_2m[i] = longerModels.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / longerModels.length;
-                        blendedLonger.apparent_temperature[i] = longerModels.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedLonger.temperature_2m[i]), 0) / longerModels.length;
-                        blendedLonger.precipitation_probability[i] = longerModels.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / longerModels.length;
-                        blendedLonger.precipitation[i] = longerModels.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / longerModels.length;
-                        blendedLonger.rain[i] = longerModels.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / longerModels.length;
-                        blendedLonger.snowfall[i] = longerModels.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / longerModels.length;
-                        blendedLonger.wind_speed_10m[i] = longerModels.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / longerModels.length;
-                    }
-                    
-                    // Merge HRRR with blended longer forecast
-                    blendedHourly = mergeForecasts(hrrrData.hourly, blendedLonger, 48);
-                } else {
-                    // No HRRR, just blend all models
-                    const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
-                    blendedHourly = {
-                        time: modelData[0].hourly.time.slice(0, maxHours),
-                        temperature_2m: [],
-                        apparent_temperature: [],
-                        precipitation_probability: [],
-                        precipitation: [],
-                        rain: [],
-                        snowfall: [],
-                        wind_speed_10m: []
-                    };
-
-                    for (let i = 0; i < maxHours; i++) {
-                        blendedHourly.temperature_2m[i] = modelData.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / modelData.length;
-                        blendedHourly.apparent_temperature[i] = modelData.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedHourly.temperature_2m[i]), 0) / modelData.length;
-                        blendedHourly.precipitation_probability[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / modelData.length;
-                        blendedHourly.precipitation[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / modelData.length;
-                        blendedHourly.rain[i] = modelData.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / modelData.length;
-                        blendedHourly.snowfall[i] = modelData.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / modelData.length;
-                        blendedHourly.wind_speed_10m[i] = modelData.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / modelData.length;
-                    }
-                }
-
-                currentForecastData = blendedHourly;
-
-                // Historical data
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-
-                updateCharts(historicalData);
-                initRadar(lat, lng);
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading smart blend: ${err.message}`);
             }
         }
 
@@ -996,7 +685,11 @@
             let forecastDays = 7;
             let apiUrl = 'https://api.open-meteo.com/v1/forecast';
             
-            if (currentModel === 'nam') {
+            if (currentModel === 'hrrr') {
+                modelParam = 'best_match';
+                modelDisplayName = 'HRRR (High Resolution Rapid Refresh) - 3km';
+                forecastDays = 2;
+            } else if (currentModel === 'nam') {
                 modelParam = 'best_match';
                 modelDisplayName = 'NAM (North American Mesoscale)';
                 forecastDays = 3;
@@ -1013,10 +706,21 @@
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(`API returned ${response.status}: ${errorText}`);
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`API returned ${response.status}`);
                 }
                 
                 const data = await response.json();
+
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const today = new Date();
+                const startDate = yesterday.toISOString().split('T')[0];
+                const endDate = today.toISOString().split('T')[0];
+                
+                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+                const historicalResponse = await fetch(historicalUrl);
+                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
 
                 try {
                     const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
@@ -1031,7 +735,7 @@
                 
                 if (data.current && data.current.time) {
                     const runTime = new Date(data.current.time);
-                    document.getElementById('modelRun').textContent = `Model run: ${runTime.toLocaleString('en-US', { 
+                    document.getElementById('modelRun').textContent = `Updated: ${runTime.toLocaleString('en-US', { 
                         month: 'short', 
                         day: 'numeric', 
                         hour: 'numeric', 
@@ -1049,6 +753,100 @@
                 document.getElementById('conditions').textContent = getWeatherDescription(data.current.weather_code);
 
                 currentForecastData = data.hourly;
+                updateCharts(historicalData);
+                initRadar(lat, lng);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('forecast').classList.add('active');
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading weather data: ${err.message}`);
+            }
+        }
+
+        async function fetchBlendedForecast(lat, lng) {
+            try {
+                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
+                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
+                
+                let modelsToFetch = [
+                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`),
+                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
+                ];
+                let modelNames = ['GFS', 'ECMWF'];
+                
+                if (isUS) {
+                    modelsToFetch.push(
+                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`)
+                    );
+                    modelNames.push('NAM');
+                }
+                
+                const responses = await Promise.all(modelsToFetch);
+                const modelData = await Promise.all(responses.map(r => r.json()));
+
+                try {
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                    const geoData = await geoResponse.json();
+                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+                } catch (e) {
+                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                }
+
+                document.getElementById('modelName').textContent = `Model Blend (${modelNames.join(' + ')})`;
+                
+                if (modelData[0].current) {
+                    const runTime = new Date(modelData[0].current.time);
+                    document.getElementById('modelRun').textContent = `Latest: ${runTime.toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    })}`;
+                }
+
+                const numModels = modelData.length;
+                const avgTemp = modelData.reduce((sum, d) => sum + d.current.temperature_2m, 0) / numModels;
+                const avgFeelsLike = modelData.reduce((sum, d) => sum + (d.current.apparent_temperature || 0), 0) / numModels;
+                const avgWind = modelData.reduce((sum, d) => sum + d.current.wind_speed_10m, 0) / numModels;
+                const avgHumidity = modelData.reduce((sum, d) => sum + d.current.relative_humidity_2m, 0) / numModels;
+                const avgPrecip = modelData.reduce((sum, d) => sum + (d.current.precipitation || 0), 0) / numModels;
+                const avgPressure = modelData.reduce((sum, d) => sum + (d.current.surface_pressure || 0), 0) / numModels;
+
+                document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`;
+                document.getElementById('feelsLike').textContent = `${Math.round(avgFeelsLike)}°F`;
+                document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
+                document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
+                document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
+                document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
+                document.getElementById('conditions').textContent = getWeatherDescription(modelData[0].current.weather_code);
+
+                const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
+                const blendedHourly = {
+                    time: modelData[0].hourly.time.slice(0, maxHours),
+                    temperature_2m: [],
+                    apparent_temperature: [],
+                    precipitation_probability: [],
+                    precipitation: [],
+                    rain: [],
+                    snowfall: [],
+                    wind_speed_10m: []
+                };
+
+                for (let i = 0; i < maxHours; i++) {
+                    blendedHourly.temperature_2m[i] = modelData.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / numModels;
+                    blendedHourly.apparent_temperature[i] = modelData.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedHourly.temperature_2m[i]), 0) / numModels;
+                    blendedHourly.precipitation_probability[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / numModels;
+                    blendedHourly.precipitation[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / numModels;
+                    blendedHourly.rain[i] = modelData.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / numModels;
+                    blendedHourly.snowfall[i] = modelData.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / numModels;
+                    blendedHourly.wind_speed_10m[i] = modelData.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / numModels;
+                }
+
+                currentForecastData = blendedHourly;
 
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
@@ -1068,19 +866,17 @@
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading weather data: ${err.message}`);
+                showError(`Error loading blended forecast: ${err.message}`);
             }
         }
 
         async function initRadar(lat, lng) {
             if (!radarMap) {
                 radarMap = L.map('radarMap').setView([lat, lng], 7);
-                
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap, &copy; CARTO',
                     maxZoom: 19
                 }).addTo(radarMap);
-                
             } else {
                 radarMap.setView([lat, lng], 7);
             }
@@ -1093,10 +889,7 @@
             radarMarker.bindPopup('Your Location').openPopup();
 
             await loadRainViewerRadar();
-            
-            setTimeout(() => {
-                radarMap.invalidateSize();
-            }, 100);
+            setTimeout(() => radarMap.invalidateSize(), 100);
         }
 
         async function loadRainViewerRadar() {
@@ -1105,22 +898,11 @@
                 const data = await response.json();
                 
                 radarFrames = [];
-                
-                if (data.radar && data.radar.past) {
-                    radarFrames = data.radar.past.map(frame => ({
-                        time: frame.time,
-                        path: frame.path,
-                        isPast: true
-                    }));
+                if (data.radar?.past) {
+                    radarFrames = data.radar.past.map(frame => ({time: frame.time, path: frame.path, isPast: true}));
                 }
-                
-                if (data.radar && data.radar.nowcast) {
-                    const forecastFrames = data.radar.nowcast.map(frame => ({
-                        time: frame.time,
-                        path: frame.path,
-                        isPast: false
-                    }));
-                    radarFrames = radarFrames.concat(forecastFrames);
+                if (data.radar?.nowcast) {
+                    radarFrames = radarFrames.concat(data.radar.nowcast.map(frame => ({time: frame.time, path: frame.path, isPast: false})));
                 }
                 
                 if (radarFrames.length > 0) {
@@ -1128,53 +910,33 @@
                     slider.max = radarFrames.length - 1;
                     slider.value = radarFrames.length - 1;
                     currentFrameIndex = radarFrames.length - 1;
-                    
                     updateRadarFrame(currentFrameIndex);
                 }
-                
             } catch (err) {
-                console.error('Error loading RainViewer data:', err);
+                console.error('Error loading radar:', err);
             }
         }
 
         function updateRadarFrame(frameIndex) {
             currentFrameIndex = parseInt(frameIndex);
-            
             if (radarFrames.length === 0 || !radarMap) return;
             
             const frame = radarFrames[currentFrameIndex];
-            
-            if (radarLayer) {
-                radarMap.removeLayer(radarLayer);
-            }
+            if (radarLayer) radarMap.removeLayer(radarLayer);
             
             radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
-                attribution: 'RainViewer',
-                opacity: 0.7,
-                maxZoom: 12
-            });
-            
-            radarLayer.addTo(radarMap);
+                attribution: 'RainViewer', opacity: 0.7, maxZoom: 12
+            }).addTo(radarMap);
             
             const date = new Date(frame.time * 1000);
-            const timeStr = date.toLocaleString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                hour: 'numeric', 
-                minute: '2-digit' 
-            });
-            const label = frame.isPast ? 'Past' : 'Forecast';
-            document.getElementById('radarTimeDisplay').textContent = `${timeStr} (${label})`;
+            const timeStr = date.toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+            document.getElementById('radarTimeDisplay').textContent = `${timeStr} (${frame.isPast ? 'Past' : 'Forecast'})`;
         }
 
         function playRadarAnimation() {
             if (radarAnimationTimer) return;
-            
             radarAnimationTimer = setInterval(() => {
-                currentFrameIndex++;
-                if (currentFrameIndex >= radarFrames.length) {
-                    currentFrameIndex = 0;
-                }
+                currentFrameIndex = (currentFrameIndex + 1) % radarFrames.length;
                 document.getElementById('radarSlider').value = currentFrameIndex;
                 updateRadarFrame(currentFrameIndex);
             }, 500);
@@ -1194,229 +956,102 @@
             const timeRange = parseInt(document.getElementById('timeRange').value);
             
             const now = new Date();
-            let startIndex = 0;
-            for (let i = 0; i < hourlyData.time.length; i++) {
-                const hourTime = new Date(hourlyData.time[i]);
-                if (hourTime >= now) {
-                    startIndex = i;
-                    break;
-                }
-            }
+            let startIndex = hourlyData.time.findIndex(t => new Date(t) >= now);
+            if (startIndex === -1) startIndex = 0;
             
-            const hours = hourlyData.time.slice(startIndex, startIndex + timeRange).map(time => {
-                const date = new Date(time);
-                return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-            });
+            const hours = hourlyData.time.slice(startIndex, startIndex + timeRange).map(time => 
+                new Date(time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric'})
+            );
 
             const temps = hourlyData.temperature_2m.slice(startIndex, startIndex + timeRange);
-            const feelsLike = hourlyData.apparent_temperature ? hourlyData.apparent_temperature.slice(startIndex, startIndex + timeRange) : temps;
-            const precipProb = hourlyData.precipitation_probability ? hourlyData.precipitation_probability.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
-            const totalPrecip = hourlyData.precipitation ? hourlyData.precipitation.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
-            const rain = hourlyData.rain ? hourlyData.rain.slice(startIndex, startIndex + timeRange) : totalPrecip;
-            const snow = hourlyData.snowfall ? hourlyData.snowfall.slice(startIndex, startIndex + timeRange) : Array(timeRange).fill(0);
+            const feelsLike = hourlyData.apparent_temperature?.slice(startIndex, startIndex + timeRange) || temps;
+            const precipProb = hourlyData.precipitation_probability?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
+            const totalPrecip = hourlyData.precipitation?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
+            const rain = hourlyData.rain?.slice(startIndex, startIndex + timeRange) || totalPrecip;
+            const snow = hourlyData.snowfall?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
             const wind = hourlyData.wind_speed_10m.slice(startIndex, startIndex + timeRange);
 
             const totalRain = rain.reduce((a, b) => a + (b || 0), 0);
             const totalSnow = snow.reduce((a, b) => a + (b || 0), 0);
             const totalAll = totalPrecip.reduce((a, b) => a + (b || 0), 0);
             
-            document.getElementById('precipTotals').innerHTML = `
-                <strong>Total Precipitation:</strong> ${totalAll.toFixed(2)}" 
-                (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")
-            `;
+            document.getElementById('precipTotals').innerHTML = `<strong>Total:</strong> ${totalAll.toFixed(2)}" (Rain: ${totalRain.toFixed(2)}", Snow: ${totalSnow.toFixed(2)}")`;
 
             generateDailyForecasts(hourlyData, startIndex);
-
-            if (historicalData) {
-                generateHistoricalChart(historicalData);
-            }
-
+            if (historicalData) generateHistoricalChart(historicalData);
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
 
-            const ctx1 = document.getElementById('tempChart').getContext('2d');
-            
-            if (tempChart) {
-                tempChart.destroy();
-            }
-
-            tempChart = new Chart(ctx1, {
+            if (tempChart) tempChart.destroy();
+            tempChart = new Chart(document.getElementById('tempChart'), {
                 type: 'line',
                 data: {
                     labels: hours,
-                    datasets: [
-                        {
-                            label: 'Temperature (°F)',
-                            data: temps,
-                            borderColor: '#4a90e2',
-                            backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            fill: false
-                        },
-                        {
-                            label: 'Feels Like (°F)',
-                            data: feelsLike,
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            fill: false
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Temperature (°F)',
+                        data: temps,
+                        borderColor: '#4a90e2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }, {
+                        label: 'Feels Like (°F)',
+                        data: feelsLike,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        borderDash: [5, 5]
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 }
-                            }
-                        }
-                    },
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
                     scales: {
-                        x: {
-                            ticks: {
-                                color: '#999',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        },
-                        y: {
-                            ticks: {
-                                color: '#4a90e2'
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        }
+                        x: {ticks: {color: '#999', maxRotation: 45, minRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#4a90e2'}, grid: {color: '#2a2a2a'}}
                     }
                 }
             });
 
-            const ctx2 = document.getElementById('precipChart').getContext('2d');
-            
-            if (precipChart) {
-                precipChart.destroy();
-            }
-
-            precipChart = new Chart(ctx2, {
+            if (precipChart) precipChart.destroy();
+            precipChart = new Chart(document.getElementById('precipChart'), {
                 type: 'bar',
                 data: {
                     labels: hours,
-                    datasets: [
-                        {
-                            label: 'Precip Probability (%)',
-                            data: precipProb,
-                            backgroundColor: 'rgba(94, 189, 94, 0.6)',
-                            borderColor: '#5ebd5e',
-                            borderWidth: 1,
-                            type: 'line',
-                            tension: 0.4,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Rain (in)',
-                            data: rain,
-                            backgroundColor: '#3498db',
-                            yAxisID: 'y1'
-                        },
-                        {
-                            label: 'Snow (in)',
-                            data: snow,
-                            backgroundColor: '#ecf0f1',
-                            yAxisID: 'y1'
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Precip Probability (%)',
+                        data: precipProb,
+                        backgroundColor: 'rgba(94, 189, 94, 0.6)',
+                        borderColor: '#5ebd5e',
+                        type: 'line',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Rain (in)',
+                        data: rain,
+                        backgroundColor: '#3498db',
+                        yAxisID: 'y1'
+                    }, {
+                        label: 'Snow (in)',
+                        data: snow,
+                        backgroundColor: '#ecf0f1',
+                        yAxisID: 'y1'
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 }
-                            }
-                        }
-                    },
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
                     scales: {
-                        x: {
-                            stacked: true,
-                            ticks: {
-                                color: '#999',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            ticks: {
-                                color: '#5ebd5e'
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Probability (%)',
-                                color: '#5ebd5e'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            stacked: true,
-                            ticks: {
-                                color: '#3498db'
-                            },
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'Amount (in)',
-                                color: '#3498db'
-                            }
-                        }
+                        x: {stacked: true, ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {position: 'left', ticks: {color: '#5ebd5e'}, grid: {color: '#2a2a2a'}},
+                        y1: {position: 'right', stacked: true, ticks: {color: '#3498db'}, grid: {drawOnChartArea: false}}
                     }
                 }
             });
 
-            const ctx3 = document.getElementById('precipAccumChart').getContext('2d');
-            
-            if (precipAccumChart) {
-                precipAccumChart.destroy();
-            }
-
-            let cumulativeRain = [];
-            let cumulativeSnow = [];
-            let cumulativeTotal = [];
-            let sumRain = 0;
-            let sumSnow = 0;
-            let sumTotal = 0;
-
+            let cumulativeRain = [], cumulativeSnow = [], cumulativeTotal = [];
+            let sumRain = 0, sumSnow = 0, sumTotal = 0;
             for (let i = 0; i < timeRange; i++) {
                 sumRain += rain[i] || 0;
                 sumSnow += snow[i] || 0;
@@ -1426,283 +1061,136 @@
                 cumulativeTotal.push(sumTotal);
             }
 
-            precipAccumChart = new Chart(ctx3, {
+            if (precipAccumChart) precipAccumChart.destroy();
+            precipAccumChart = new Chart(document.getElementById('precipAccumChart'), {
                 type: 'line',
                 data: {
                     labels: hours,
-                    datasets: [
-                        {
-                            label: 'Total Accumulation (in)',
-                            data: cumulativeTotal,
-                            borderColor: '#9b59b6',
-                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 3,
-                            fill: true
-                        },
-                        {
-                            label: 'Rain Accumulation (in)',
-                            data: cumulativeRain,
-                            borderColor: '#3498db',
-                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            fill: false
-                        },
-                        {
-                            label: 'Snow Accumulation (in)',
-                            data: cumulativeSnow,
-                            borderColor: '#ffffff',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            fill: false
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Total Accumulation (in)',
+                        data: cumulativeTotal,
+                        borderColor: '#9b59b6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 3,
+                        fill: true
+                    }, {
+                        label: 'Rain Accumulation (in)',
+                        data: cumulativeRain,
+                        borderColor: '#3498db',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }, {
+                        label: 'Snow Accumulation (in)',
+                        data: cumulativeSnow,
+                        borderColor: '#ffffff',
+                        tension: 0.4,
+                        borderWidth: 2
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 }
-                            }
-                        }
-                    },
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
                     scales: {
-                        x: {
-                            ticks: {
-                                color: '#999',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        },
-                        y: {
-                            ticks: {
-                                color: '#9b59b6'
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Accumulation (inches)',
-                                color: '#9b59b6'
-                            }
-                        }
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#9b59b6'}, grid: {color: '#2a2a2a'}}
                     }
                 }
             });
 
-            const ctx4 = document.getElementById('windChart').getContext('2d');
-            
-            if (windChart) {
-                windChart.destroy();
-            }
-
-            windChart = new Chart(ctx4, {
+            if (windChart) windChart.destroy();
+            windChart = new Chart(document.getElementById('windChart'), {
                 type: 'line',
                 data: {
                     labels: hours,
-                    datasets: [
-                        {
-                            label: 'Wind Speed (mph)',
-                            data: wind,
-                            borderColor: '#f39c12',
-                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            borderWidth: 2
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Wind Speed (mph)',
+                        data: wind,
+                        borderColor: '#f39c12',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 }
-                            }
-                        }
-                    },
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
                     scales: {
-                        x: {
-                            ticks: {
-                                color: '#999',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        },
-                        y: {
-                            ticks: {
-                                color: '#f39c12'
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        }
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {ticks: {color: '#f39c12'}, grid: {color: '#2a2a2a'}}
                     }
                 }
             });
         }
 
         function generateHistoricalChart(historicalData) {
-            if (!historicalData || !historicalData.hourly) return;
+            if (!historicalData?.hourly) return;
 
-            const ctx = document.getElementById('historicalChart').getContext('2d');
-            
-            if (historicalChart) {
-                historicalChart.destroy();
-            }
-
-            const hours = historicalData.hourly.time.map(time => {
-                const date = new Date(time);
-                return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-            });
-
+            const hours = historicalData.hourly.time.map(time => 
+                new Date(time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric'})
+            );
             const temps = historicalData.hourly.temperature_2m || [];
             const wind = historicalData.hourly.wind_speed_10m || [];
-            const rainHourly = historicalData.hourly.rain || [];
-            const snowHourly = historicalData.hourly.snowfall || [];
+            const rain = historicalData.hourly.rain || [];
+            const snow = historicalData.hourly.snowfall || [];
 
-            let cumulativeRain = [];
-            let cumulativeSnow = [];
-            let sumRain = 0;
-            let sumSnow = 0;
-
-            for (let i = 0; i < rainHourly.length; i++) {
-                sumRain += rainHourly[i] || 0;
-                sumSnow += snowHourly[i] || 0;
+            let cumulativeRain = [], cumulativeSnow = [];
+            let sumRain = 0, sumSnow = 0;
+            for (let i = 0; i < rain.length; i++) {
+                sumRain += rain[i] || 0;
+                sumSnow += snow[i] || 0;
                 cumulativeRain.push(sumRain);
                 cumulativeSnow.push(sumSnow);
             }
 
-            historicalChart = new Chart(ctx, {
+            if (historicalChart) historicalChart.destroy();
+            historicalChart = new Chart(document.getElementById('historicalChart'), {
                 type: 'line',
                 data: {
                     labels: hours,
-                    datasets: [
-                        {
-                            label: 'Temperature (°F)',
-                            data: temps,
-                            borderColor: '#4a90e2',
-                            backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y',
-                            fill: false
-                        },
-                        {
-                            label: 'Wind (mph)',
-                            data: wind,
-                            borderColor: '#f39c12',
-                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y',
-                            fill: false
-                        },
-                        {
-                            label: 'Rain Accumulation (in)',
-                            data: cumulativeRain,
-                            borderColor: '#3498db',
-                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y1',
-                            fill: true
-                        },
-                        {
-                            label: 'Snow Accumulation (in)',
-                            data: cumulativeSnow,
-                            borderColor: '#ffffff',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y1',
-                            fill: true
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Temperature (°F)',
+                        data: temps,
+                        borderColor: '#4a90e2',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Wind (mph)',
+                        data: wind,
+                        borderColor: '#f39c12',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Rain (in)',
+                        data: cumulativeRain,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }, {
+                        label: 'Snow (in)',
+                        data: cumulativeSnow,
+                        borderColor: '#ffffff',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 }
-                            }
-                        }
-                    },
+                    plugins: {legend: {labels: {color: '#e0e0e0'}}},
                     scales: {
-                        x: {
-                            ticks: {
-                                color: '#999',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 10 }
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            ticks: {
-                                color: '#4a90e2'
-                            },
-                            grid: {
-                                color: '#2a2a2a'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Temp (°F) / Wind (mph)',
-                                color: '#4a90e2'
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            ticks: {
-                                color: '#3498db'
-                            },
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            title: {
-                                display: true,
-                                text: 'Accumulation (in)',
-                                color: '#3498db'
-                            }
-                        }
+                        x: {ticks: {color: '#999', maxRotation: 45}, grid: {color: '#2a2a2a'}},
+                        y: {position: 'left', ticks: {color: '#4a90e2'}, grid: {color: '#2a2a2a'}},
+                        y1: {position: 'right', ticks: {color: '#3498db'}, grid: {drawOnChartArea: false}}
                     }
                 }
             });
@@ -1722,11 +1210,8 @@
                 const dayIndices = [];
                 for (let i = 0; i < hourlyData.time.length; i++) {
                     const time = new Date(hourlyData.time[i]);
-                    if (time >= dayStart && time < dayEnd) {
-                        dayIndices.push(i);
-                    }
+                    if (time >= dayStart && time < dayEnd) dayIndices.push(i);
                 }
-
                 if (dayIndices.length === 0) return null;
 
                 const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
@@ -1745,116 +1230,48 @@
             }
 
             function formatDayForecast(data) {
-                if (!data) return '<div class="daily-value">No data available</div>';
-                
+                if (!data) return '<div class="daily-value">No data</div>';
                 return `
-                    <div class="daily-stat">
-                        <span class="daily-label">Low/High Temp:</span>
-                        <span class="daily-value temp">${Math.round(data.lowTemp)}°F / ${Math.round(data.highTemp)}°F</span>
-                    </div>
-                    <div class="daily-stat">
-                        <span class="daily-label">Wind Range:</span>
-                        <span class="daily-value wind">${Math.round(data.lowWind)}-${Math.round(data.highWind)} mph</span>
-                    </div>
-                    <div class="daily-stat">
-                        <span class="daily-label">Rain:</span>
-                        <span class="daily-value rain">${data.totalRain.toFixed(2)}"</span>
-                    </div>
-                    <div class="daily-stat">
-                        <span class="daily-label">Snow:</span>
-                        <span class="daily-value snow">${data.totalSnow.toFixed(2)}"</span>
-                    </div>
+                    <div class="daily-stat"><span class="daily-label">Temp:</span><span class="daily-value temp">${Math.round(data.lowTemp)}°-${Math.round(data.highTemp)}°F</span></div>
+                    <div class="daily-stat"><span class="daily-label">Wind:</span><span class="daily-value wind">${Math.round(data.lowWind)}-${Math.round(data.highWind)} mph</span></div>
+                    <div class="daily-stat"><span class="daily-label">Rain:</span><span class="daily-value rain">${data.totalRain.toFixed(2)}"</span></div>
+                    <div class="daily-stat"><span class="daily-label">Snow:</span><span class="daily-value snow">${data.totalSnow.toFixed(2)}"</span></div>
                 `;
             }
 
-            const todayData = getDayData(now, tomorrowStart);
-            document.getElementById('todayForecast').innerHTML = formatDayForecast(todayData);
-
-            const tomorrowData = getDayData(tomorrowStart, dayAfterStart);
-            document.getElementById('tomorrowForecast').innerHTML = formatDayForecast(tomorrowData);
-
-            const dayAfterData = getDayData(dayAfterStart, dayAfterEnd);
-            document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(dayAfterData);
+            document.getElementById('todayForecast').innerHTML = formatDayForecast(getDayData(now, tomorrowStart));
+            document.getElementById('tomorrowForecast').innerHTML = formatDayForecast(getDayData(tomorrowStart, dayAfterStart));
+            document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(getDayData(dayAfterStart, dayAfterEnd));
         }
 
         function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind) {
-            let tableHTML = `
-                <table class="hourly-table">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>Temp</th>
-                            <th>Feels Like</th>
-                            <th>Precip %</th>
-                            <th>Rain</th>
-                            <th>Snow</th>
-                            <th>Wind</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
+            let html = '<table class="hourly-table"><thead><tr><th>Time</th><th>Temp</th><th>Feels</th><th>Precip %</th><th>Rain</th><th>Snow</th><th>Wind</th></tr></thead><tbody>';
             for (let i = 0; i < hours.length; i++) {
-                tableHTML += `
-                    <tr>
-                        <td>${hours[i]}</td>
-                        <td class="temp-cell">${Math.round(temps[i])}°F</td>
-                        <td class="temp-cell">${Math.round(feelsLike[i])}°F</td>
-                        <td class="precip-cell">${Math.round(precipProb[i])}%</td>
-                        <td class="rain-cell">${rain[i].toFixed(2)}"</td>
-                        <td class="snow-cell">${snow[i].toFixed(2)}"</td>
-                        <td class="wind-cell">${Math.round(wind[i])} mph</td>
-                    </tr>
-                `;
+                html += `<tr>
+                    <td>${hours[i]}</td>
+                    <td class="temp-cell">${Math.round(temps[i])}°F</td>
+                    <td class="temp-cell">${Math.round(feelsLike[i])}°F</td>
+                    <td class="precip-cell">${Math.round(precipProb[i])}%</td>
+                    <td class="rain-cell">${rain[i].toFixed(2)}"</td>
+                    <td class="snow-cell">${snow[i].toFixed(2)}"</td>
+                    <td class="wind-cell">${Math.round(wind[i])} mph</td>
+                </tr>`;
             }
-
-            tableHTML += `
-                    </tbody>
-                </table>
-            `;
-
-            document.getElementById('hourlyTable').innerHTML = tableHTML;
+            html += '</tbody></table>';
+            document.getElementById('hourlyTable').innerHTML = html;
         }
 
         function getWeatherDescription(code) {
-            const codes = {
-                0: 'Clear sky',
-                1: 'Mainly clear',
-                2: 'Partly cloudy',
-                3: 'Overcast',
-                45: 'Foggy',
-                48: 'Depositing rime fog',
-                51: 'Light drizzle',
-                53: 'Moderate drizzle',
-                55: 'Dense drizzle',
-                61: 'Slight rain',
-                63: 'Moderate rain',
-                65: 'Heavy rain',
-                71: 'Slight snow',
-                73: 'Moderate snow',
-                75: 'Heavy snow',
-                77: 'Snow grains',
-                80: 'Slight rain showers',
-                81: 'Moderate rain showers',
-                82: 'Violent rain showers',
-                85: 'Slight snow showers',
-                86: 'Heavy snow showers',
-                95: 'Thunderstorm',
-                96: 'Thunderstorm with slight hail',
-                99: 'Thunderstorm with heavy hail'
-            };
+            const codes = {0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',61:'Slight rain',63:'Moderate rain',65:'Heavy rain',71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + heavy hail'};
             return codes[code] || 'Unknown';
         }
 
         function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.classList.add('active');
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').classList.add('active');
         }
 
-        window.addEventListener('load', () => {
-            getForecast(28.2189, -82.4526);
-        });
+        window.addEventListener('load', () => getForecast(28.2189, -82.4526));
     </script>
 <script>
   if ('serviceWorker' in navigator) {
