@@ -260,34 +260,8 @@
             margin-bottom: 20px;
         }
 
-        .goes-section {
-            margin-bottom: 20px;
-        }
-
         .historical-section {
             margin-bottom: 20px;
-        }
-
-        .layer-btn {
-            padding: 8px 16px;
-            background: #252525;
-            border: 2px solid #333;
-            border-radius: 6px;
-            color: #e0e0e0;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .layer-btn:hover {
-            border-color: #555;
-            background: #2a2a2a;
-        }
-
-        .layer-btn.active {
-            background: #4a90e2;
-            border-color: #4a90e2;
-            color: #fff;
         }
 
         #radarMap {
@@ -350,10 +324,6 @@
 
         .daily-value.snow {
             color: #9b59b6;
-        }
-
-        .hourly-forecast {
-            margin-top: 20px;
         }
 
         .hourly-table {
@@ -436,11 +406,11 @@
             </div>
 
             <div class="model-selector">
-                <button class="model-btn active" data-model="hrrr" onclick="selectModel('hrrr')">HRRR (NOAA)</button>
-                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS (NOAA)</button>
-                <button class="model-btn" data-model="nam" onclick="selectModel('nam')">NAM (NOAA)</button>
-                <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF (NOAA)</button>
-                <button class="model-btn" data-model="bestmatch" onclick="selectModel('bestmatch')">Best Match (Open-Meteo)</button>
+                <button class="model-btn active" data-model="weathergov" onclick="selectModel('weathergov')">Weather.gov Blend</button>
+                <button class="model-btn" data-model="bestmatch" onclick="selectModel('bestmatch')">Open-Meteo Best Match</button>
+                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS Only</button>
+                <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF Only</button>
+                <button class="model-btn" data-model="average" onclick="selectModel('average')">Average All 4</button>
             </div>
         </div>
 
@@ -517,7 +487,7 @@
                             <option value="72">72 Hours</option>
                             <option value="96">96 Hours</option>
                             <option value="120">120 Hours</option>
-                            <option value="136">136 Hours (GFS Only)</option>
+                            <option value="240">240 Hours (ECMWF/GFS)</option>
                         </select>
                     </div>
                     <div class="chart-wrapper">
@@ -584,7 +554,7 @@
     </div>
 
     <script>
-        let currentModel = 'hrrr';
+        let currentModel = 'weathergov';
         let tempChart = null;
         let precipChart = null;
         let precipAccumChart = null;
@@ -672,412 +642,329 @@
             document.getElementById('forecast').classList.remove('active');
             document.getElementById('error').classList.remove('active');
 
-            if (currentModel === 'bestmatch') {
-                await fetchOpenMeteoBestMatch(lat, lng);
-            } else if (currentModel === 'blend') {
-                await fetchBlendedForecast(lat, lng);
-            } else {
-                await fetchSingleModel(lat, lng);
+            if (currentModel === 'weathergov') {
+                await fetchWeatherGov(lat, lng);
+            } else if (currentModel === 'bestmatch') {
+                await fetchBestMatch(lat, lng);
+            } else if (currentModel === 'gfs') {
+                await fetchGFS(lat, lng);
+            } else if (currentModel === 'ecmwf') {
+                await fetchECMWF(lat, lng);
+            } else if (currentModel === 'average') {
+                await fetchAverage(lat, lng);
             }
         }
 
-        // Fetch HRRR data from Weather.gov (NOAA's official API)
-        async function fetchWeatherGovHRRR(lat, lng) {
+        // 1. Weather.gov Blend
+        async function fetchWeatherGov(lat, lng) {
             try {
-                // Check if location is in US
                 const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
                 if (!isUS) {
-                    showError('HRRR is only available for US locations. Switching to GFS...');
-                    currentModel = 'gfs';
-                    selectModel('gfs');
-                    await fetchSingleModel(lat, lng);
+                    showError('Weather.gov only available for US locations. Switching to Open-Meteo Best Match...');
+                    currentModel = 'bestmatch';
+                    selectModel('bestmatch');
+                    await fetchBestMatch(lat, lng);
                     return;
                 }
 
-                // Step 1: Get grid point from Weather.gov
                 const pointsResponse = await fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
-                    headers: {
-                        'User-Agent': '(WeatherApp, contact@example.com)',
-                        'Accept': 'application/geo+json'
-                    }
+                    headers: {'User-Agent': '(WeatherApp, contact@example.com)', 'Accept': 'application/geo+json'}
                 });
 
-                if (!pointsResponse.ok) {
-                    throw new Error(`Weather.gov API error: ${pointsResponse.status}`);
-                }
+                if (!pointsResponse.ok) throw new Error(`Weather.gov API error: ${pointsResponse.status}`);
 
                 const pointsData = await pointsResponse.json();
                 const forecastHourlyUrl = pointsData.properties.forecastHourly;
-                const gridId = pointsData.properties.gridId;
-                const gridX = pointsData.properties.gridX;
-                const gridY = pointsData.properties.gridY;
 
-                // Step 2: Get hourly forecast (this uses HRRR model)
                 const forecastResponse = await fetch(forecastHourlyUrl, {
-                    headers: {
-                        'User-Agent': '(WeatherApp, contact@example.com)',
-                        'Accept': 'application/geo+json'
-                    }
+                    headers: {'User-Agent': '(WeatherApp, contact@example.com)', 'Accept': 'application/geo+json'}
                 });
 
-                if (!forecastResponse.ok) {
-                    throw new Error(`Forecast API error: ${forecastResponse.status}`);
-                }
+                if (!forecastResponse.ok) throw new Error(`Forecast API error: ${forecastResponse.status}`);
 
                 const forecastData = await forecastResponse.json();
                 
-                console.log('Weather.gov HRRR data:', forecastData);
+                setLocationName(lat, lng);
+                document.getElementById('modelName').textContent = 'Weather.gov Blended Forecast (HRRR/NAM/GFS)';
+                document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
 
-                // Get location name
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                document.getElementById('modelName').textContent = 'HRRR via NOAA Weather.gov (3km)';
-                
                 const periods = forecastData.properties.periods;
-                const now = new Date();
-                document.getElementById('modelRun').textContent = `Updated: ${now.toLocaleString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    timeZoneName: 'short'
-                })} | HRRR Model`;
-
-                // Current conditions from first period
                 const current = periods[0];
+                
                 document.getElementById('temp').textContent = `${current.temperature}°F`;
-                document.getElementById('feelsLike').textContent = current.apparentTemperature ? `${current.apparentTemperature.value}°F` : 'N/A';
-                document.getElementById('wind').textContent = `${current.windSpeed}`;
+                document.getElementById('feelsLike').textContent = 'N/A';
+                document.getElementById('wind').textContent = current.windSpeed;
                 document.getElementById('humidity').textContent = current.relativeHumidity?.value ? `${Math.round(current.relativeHumidity.value)}%` : 'N/A';
                 document.getElementById('precip').textContent = current.probabilityOfPrecipitation?.value ? `${current.probabilityOfPrecipitation.value}%` : '0%';
                 document.getElementById('pressure').textContent = 'N/A';
                 document.getElementById('conditions').textContent = current.shortForecast;
 
-                // Convert Weather.gov format to our format
-                const hourlyData = {
-                    time: [],
-                    temperature_2m: [],
-                    apparent_temperature: [],
-                    precipitation_probability: [],
-                    precipitation: [],
-                    rain: [],
-                    snowfall: [],
-                    wind_speed_10m: []
-                };
-
-                periods.forEach(period => {
-                    hourlyData.time.push(period.startTime);
-                    hourlyData.temperature_2m.push(period.temperature);
-                    hourlyData.apparent_temperature.push(period.temperature); // Weather.gov doesn't always have feels like
-                    hourlyData.precipitation_probability.push(period.probabilityOfPrecipitation?.value || 0);
-                    hourlyData.precipitation.push(0); // Weather.gov doesn't provide accumulation in hourly
-                    hourlyData.rain.push(0);
-                    hourlyData.snowfall.push(0);
-                    
-                    // Parse wind speed (comes as "10 mph" or "5 to 10 mph")
-                    const windMatch = period.windSpeed.match(/(\d+)/);
-                    const windSpeed = windMatch ? parseInt(windMatch[1]) : 0;
-                    hourlyData.wind_speed_10m.push(windSpeed);
-                });
-
+                const hourlyData = convertWeatherGovToStandard(periods);
                 currentForecastData = hourlyData;
 
-                // Fetch historical data from Open-Meteo (Weather.gov doesn't have historical)
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-
-                updateCharts(historicalData);
-                initRadar(lat, lng);
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
+                await fetchHistoricalAndFinish(lat, lng);
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading HRRR from Weather.gov: ${err.message}. Try GFS instead.`);
-                console.error('Weather.gov error:', err);
+                showError(`Error loading Weather.gov: ${err.message}`);
             }
         }
 
-        async function fetchSingleModel(lat, lng) {
-            // Use Weather.gov API for HRRR (US only)
-            if (currentModel === 'hrrr') {
-                await fetchWeatherGovHRRR(lat, lng);
-                return;
-            }
-            
-            // For other models, use Open-Meteo with specific model parameters
-            let modelParam = 'gfs_seamless';
-            let modelDisplayName = 'GFS (Global Forecast System)';
-            let forecastDays = 7;
-            let apiUrl = 'https://api.open-meteo.com/v1/forecast';
-            
-            if (currentModel === 'nam') {
-                modelParam = 'gfs_seamless'; // NAM not available directly, using GFS
-                modelDisplayName = 'NAM (North American Mesoscale) - via Open-Meteo';
-                forecastDays = 3;
-                showError('Note: NAM direct access not available. Using GFS instead. For real NAM-like data, try Best Match for US locations.');
-            } else if (currentModel === 'ecmwf') {
-                modelParam = 'ecmwf_ifs025';
-                modelDisplayName = 'ECMWF IFS (25km)';
-                forecastDays = 10;
-            } else if (currentModel === 'gfs') {
-                modelParam = 'gfs_seamless';
-                modelDisplayName = 'GFS (Global Forecast System, 13km)';
-                forecastDays = 7;
-            }
-
+        // 2. Open-Meteo Best Match
+        async function fetchBestMatch(lat, lng) {
             try {
-                const url = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=${forecastDays}&models=${modelParam}`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`;
                 
                 const response = await fetch(url);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error:', response.status, errorText);
-                    throw new Error(`API returned ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`API returned ${response.status}`);
                 
                 const data = await response.json();
 
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+                setLocationName(lat, lng);
+                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
+                document.getElementById('modelName').textContent = `Open-Meteo Best Match (Auto-selected, likely ${isUS ? 'HRRR/NAM' : 'GFS'})`;
+                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
 
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                document.getElementById('modelName').textContent = modelDisplayName;
-                
-                if (data.current && data.current.time) {
-                    const runTime = new Date(data.current.time);
-                    document.getElementById('modelRun').textContent = `Updated: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })}`;
-                }
-
-                document.getElementById('temp').textContent = `${Math.round(data.current.temperature_2m)}°F`;
-                document.getElementById('feelsLike').textContent = data.current.apparent_temperature ? `${Math.round(data.current.apparent_temperature)}°F` : 'N/A';
-                document.getElementById('wind').textContent = `${Math.round(data.current.wind_speed_10m)} mph`;
-                document.getElementById('humidity').textContent = `${data.current.relative_humidity_2m}%`;
-                document.getElementById('precip').textContent = data.current.precipitation !== null ? `${data.current.precipitation.toFixed(2)} in` : '0.00 in';
-                document.getElementById('pressure').textContent = data.current.surface_pressure ? `${Math.round(data.current.surface_pressure)} mb` : 'N/A';
-                document.getElementById('conditions').textContent = getWeatherDescription(data.current.weather_code);
-
+                updateCurrentConditions(data.current);
                 currentForecastData = data.hourly;
-                updateCharts(historicalData);
-                initRadar(lat, lng);
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
+                await fetchHistoricalAndFinish(lat, lng);
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading weather data: ${err.message}`);
+                showError(`Error loading Best Match: ${err.message}`);
             }
         }
 
-        // Fetch using Open-Meteo's best_match (auto-selects best model for location)
-        async function fetchOpenMeteoBestMatch(lat, lng) {
+        // 3. GFS Only
+        async function fetchGFS(lat, lng) {
             try {
-                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
-                const url = `${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`;
                 
                 const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`API returned ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`API returned ${response.status}`);
                 
                 const data = await response.json();
 
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+                setLocationName(lat, lng);
+                document.getElementById('modelName').textContent = 'GFS Only (13km, Global)';
+                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
 
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-                }
-
-                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
-                document.getElementById('modelName').textContent = `Best Match (likely ${isUS ? 'NAM/HRRR' : 'GFS'} for this location)`;
-                
-                if (data.current && data.current.time) {
-                    const runTime = new Date(data.current.time);
-                    document.getElementById('modelRun').textContent = `Updated: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })}`;
-                }
-
-                document.getElementById('temp').textContent = `${Math.round(data.current.temperature_2m)}°F`;
-                document.getElementById('feelsLike').textContent = data.current.apparent_temperature ? `${Math.round(data.current.apparent_temperature)}°F` : 'N/A';
-                document.getElementById('wind').textContent = `${Math.round(data.current.wind_speed_10m)} mph`;
-                document.getElementById('humidity').textContent = `${data.current.relative_humidity_2m}%`;
-                document.getElementById('precip').textContent = data.current.precipitation !== null ? `${data.current.precipitation.toFixed(2)} in` : '0.00 in';
-                document.getElementById('pressure').textContent = data.current.surface_pressure ? `${Math.round(data.current.surface_pressure)} mb` : 'N/A';
-                document.getElementById('conditions').textContent = getWeatherDescription(data.current.weather_code);
-
+                updateCurrentConditions(data.current);
                 currentForecastData = data.hourly;
-                updateCharts(historicalData);
-                initRadar(lat, lng);
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
+                await fetchHistoricalAndFinish(lat, lng);
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading Best Match data: ${err.message}`);
+                showError(`Error loading GFS: ${err.message}`);
             }
         }
 
-        async function fetchBlendedForecast(lat, lng) {
+        // 4. ECMWF Only
+        async function fetchECMWF(lat, lng) {
             try {
-                const apiUrl = 'https://api.open-meteo.com/v1/forecast';
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`API returned ${response.status}`);
+                
+                const data = await response.json();
+
+                setLocationName(lat, lng);
+                document.getElementById('modelName').textContent = 'ECMWF Only (25km, Global)';
+                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
+
+                updateCurrentConditions(data.current);
+                currentForecastData = data.hourly;
+
+                await fetchHistoricalAndFinish(lat, lng);
+
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError(`Error loading ECMWF: ${err.message}`);
+            }
+        }
+
+        // 5. Average All 4
+        async function fetchAverage(lat, lng) {
+            try {
                 const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
                 
-                let modelsToFetch = [
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=gfs_seamless`),
-                    fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
-                ];
-                let modelNames = ['GFS', 'ECMWF'];
-                
+                let promises = [];
+                let modelNames = [];
+
+                // Fetch Weather.gov if US
                 if (isUS) {
-                    modelsToFetch.push(
-                        fetch(`${apiUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=3&models=best_match`)
+                    promises.push(
+                        fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
+                            headers: {'User-Agent': '(WeatherApp, contact@example.com)'}
+                        })
+                        .then(r => r.json())
+                        .then(p => fetch(p.properties.forecastHourly, {headers: {'User-Agent': '(WeatherApp, contact@example.com)'}}))
+                        .then(r => r.json())
+                        .then(d => ({type: 'weathergov', data: d}))
+                        .catch(() => null)
                     );
-                    modelNames.push('NAM');
-                }
-                
-                const responses = await Promise.all(modelsToFetch);
-                const modelData = await Promise.all(responses.map(r => r.json()));
-
-                try {
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-                    const geoData = await geoResponse.json();
-                    const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
-                    document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
-                } catch (e) {
-                    document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+                    modelNames.push('Weather.gov');
                 }
 
-                document.getElementById('modelName').textContent = `Model Blend (${modelNames.join(' + ')})`;
-                
-                if (modelData[0].current) {
-                    const runTime = new Date(modelData[0].current.time);
-                    document.getElementById('modelRun').textContent = `Latest: ${runTime.toLocaleString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        timeZoneName: 'short'
-                    })}`;
+                // Fetch the 3 Open-Meteo models
+                promises.push(
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`)
+                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d})),
+                    
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`)
+                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d})),
+                    
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
+                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d}))
+                );
+                modelNames.push('Best Match', 'GFS', 'ECMWF');
+
+                const results = await Promise.all(promises);
+                const validResults = results.filter(r => r !== null);
+
+                if (validResults.length === 0) {
+                    throw new Error('Failed to fetch any models');
                 }
 
-                const numModels = modelData.length;
-                const avgTemp = modelData.reduce((sum, d) => sum + d.current.temperature_2m, 0) / numModels;
-                const avgFeelsLike = modelData.reduce((sum, d) => sum + (d.current.apparent_temperature || 0), 0) / numModels;
-                const avgWind = modelData.reduce((sum, d) => sum + d.current.wind_speed_10m, 0) / numModels;
-                const avgHumidity = modelData.reduce((sum, d) => sum + d.current.relative_humidity_2m, 0) / numModels;
-                const avgPrecip = modelData.reduce((sum, d) => sum + (d.current.precipitation || 0), 0) / numModels;
-                const avgPressure = modelData.reduce((sum, d) => sum + (d.current.surface_pressure || 0), 0) / numModels;
+                // Convert all to standard format
+                const standardized = validResults.map(r => {
+                    if (r.type === 'weathergov') {
+                        return convertWeatherGovToStandard(r.data.properties.periods);
+                    } else {
+                        return r.data.hourly;
+                    }
+                });
+
+                // Average them
+                const averaged = averageForecasts(standardized);
+
+                setLocationName(lat, lng);
+                document.getElementById('modelName').textContent = `Averaged Forecast (${modelNames.filter((_, i) => validResults[i]).join(' + ')})`;
+                document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
+
+                // Average current conditions from Open-Meteo models
+                const omModels = validResults.filter(r => r.type === 'openmeteo').map(r => r.data.current);
+                const avgTemp = omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
+                const avgFeels = omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
+                const avgWind = omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
+                const avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
+                const avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
+                const avgPressure = omModels.reduce((s, d) => s + (d.surface_pressure || 0), 0) / omModels.length;
 
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`;
-                document.getElementById('feelsLike').textContent = `${Math.round(avgFeelsLike)}°F`;
+                document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
                 document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
                 document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
-                document.getElementById('conditions').textContent = getWeatherDescription(modelData[0].current.weather_code);
+                document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
 
-                const maxHours = Math.min(...modelData.map(d => d.hourly.time.length));
-                const blendedHourly = {
-                    time: modelData[0].hourly.time.slice(0, maxHours),
-                    temperature_2m: [],
-                    apparent_temperature: [],
-                    precipitation_probability: [],
-                    precipitation: [],
-                    rain: [],
-                    snowfall: [],
-                    wind_speed_10m: []
-                };
+                currentForecastData = averaged;
 
-                for (let i = 0; i < maxHours; i++) {
-                    blendedHourly.temperature_2m[i] = modelData.reduce((sum, d) => sum + d.hourly.temperature_2m[i], 0) / numModels;
-                    blendedHourly.apparent_temperature[i] = modelData.reduce((sum, d) => sum + (d.hourly.apparent_temperature?.[i] || blendedHourly.temperature_2m[i]), 0) / numModels;
-                    blendedHourly.precipitation_probability[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation_probability?.[i] || 0), 0) / numModels;
-                    blendedHourly.precipitation[i] = modelData.reduce((sum, d) => sum + (d.hourly.precipitation?.[i] || 0), 0) / numModels;
-                    blendedHourly.rain[i] = modelData.reduce((sum, d) => sum + (d.hourly.rain?.[i] || 0), 0) / numModels;
-                    blendedHourly.snowfall[i] = modelData.reduce((sum, d) => sum + (d.hourly.snowfall?.[i] || 0), 0) / numModels;
-                    blendedHourly.wind_speed_10m[i] = modelData.reduce((sum, d) => sum + d.hourly.wind_speed_10m[i], 0) / numModels;
-                }
-
-                currentForecastData = blendedHourly;
-
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const today = new Date();
-                const startDate = yesterday.toISOString().split('T')[0];
-                const endDate = today.toISOString().split('T')[0];
-                
-                const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-                const historicalResponse = await fetch(historicalUrl);
-                const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
-
-                updateCharts(historicalData);
-                initRadar(lat, lng);
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('forecast').classList.add('active');
+                await fetchHistoricalAndFinish(lat, lng);
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading blended forecast: ${err.message}`);
+                showError(`Error loading averaged forecast: ${err.message}`);
             }
+        }
+
+        // Helper functions
+        function convertWeatherGovToStandard(periods) {
+            const hourlyData = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: []
+            };
+
+            periods.forEach(period => {
+                hourlyData.time.push(period.startTime);
+                hourlyData.temperature_2m.push(period.temperature);
+                hourlyData.apparent_temperature.push(period.temperature);
+                hourlyData.precipitation_probability.push(period.probabilityOfPrecipitation?.value || 0);
+                hourlyData.precipitation.push(0);
+                hourlyData.rain.push(0);
+                hourlyData.snowfall.push(0);
+                
+                const windMatch = period.windSpeed.match(/(\d+)/);
+                const windSpeed = windMatch ? parseInt(windMatch[1]) : 0;
+                hourlyData.wind_speed_10m.push(windSpeed);
+            });
+
+            return hourlyData;
+        }
+
+        function averageForecasts(forecasts) {
+            const minLength = Math.min(...forecasts.map(f => f.time.length));
+            const averaged = {
+                time: forecasts[0].time.slice(0, minLength),
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: []
+            };
+
+            for (let i = 0; i < minLength; i++) {
+                averaged.temperature_2m[i] = forecasts.reduce((s, f) => s + f.temperature_2m[i], 0) / forecasts.length;
+                averaged.apparent_temperature[i] = forecasts.reduce((s, f) => s + (f.apparent_temperature?.[i] || f.temperature_2m[i]), 0) / forecasts.length;
+                averaged.precipitation_probability[i] = forecasts.reduce((s, f) => s + (f.precipitation_probability?.[i] || 0), 0) / forecasts.length;
+                averaged.precipitation[i] = forecasts.reduce((s, f) => s + (f.precipitation?.[i] || 0), 0) / forecasts.length;
+                averaged.rain[i] = forecasts.reduce((s, f) => s + (f.rain?.[i] || 0), 0) / forecasts.length;
+                averaged.snowfall[i] = forecasts.reduce((s, f) => s + (f.snowfall?.[i] || 0), 0) / forecasts.length;
+                averaged.wind_speed_10m[i] = forecasts.reduce((s, f) => s + f.wind_speed_10m[i], 0) / forecasts.length;
+            }
+
+            return averaged;
+        }
+
+        function updateCurrentConditions(current) {
+            document.getElementById('temp').textContent = `${Math.round(current.temperature_2m)}°F`;
+            document.getElementById('feelsLike').textContent = current.apparent_temperature ? `${Math.round(current.apparent_temperature)}°F` : 'N/A';
+            document.getElementById('wind').textContent = `${Math.round(current.wind_speed_10m)} mph`;
+            document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
+            document.getElementById('precip').textContent = current.precipitation !== null ? `${current.precipitation.toFixed(2)} in` : '0.00 in';
+            document.getElementById('pressure').textContent = current.surface_pressure ? `${Math.round(current.surface_pressure)} mb` : 'N/A';
+            document.getElementById('conditions').textContent = getWeatherDescription(current.weather_code);
+        }
+
+        async function setLocationName(lat, lng) {
+            try {
+                const geoResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                const geoData = await geoResponse.json();
+                const locationName = geoData.address?.city || geoData.address?.town || geoData.address?.county || 'Unknown Location';
+                document.getElementById('locationName').textContent = `${locationName} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
+            } catch (e) {
+                document.getElementById('locationName').textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+            }
+        }
+
+        async function fetchHistoricalAndFinish(lat, lng) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const today = new Date();
+            const startDate = yesterday.toISOString().split('T')[0];
+            const endDate = today.toISOString().split('T')[0];
+            
+            const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+            const historicalResponse = await fetch(historicalUrl);
+            const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
+
+            updateCharts(historicalData);
+            initRadar(lat, lng);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('forecast').classList.add('active');
         }
 
         async function initRadar(lat, lng) {
@@ -1091,10 +978,7 @@
                 radarMap.setView([lat, lng], 7);
             }
 
-            if (radarMarker) {
-                radarMap.removeLayer(radarMarker);
-            }
-            
+            if (radarMarker) radarMap.removeLayer(radarMarker);
             radarMarker = L.marker([lat, lng]).addTo(radarMap);
             radarMarker.bindPopup('Your Location').openPopup();
 
@@ -1191,6 +1075,7 @@
             if (historicalData) generateHistoricalChart(historicalData);
             generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
 
+            // Simplified chart generation
             if (tempChart) tempChart.destroy();
             tempChart = new Chart(document.getElementById('tempChart'), {
                 type: 'line',
@@ -1262,7 +1147,7 @@
 
             let cumulativeRain = [], cumulativeSnow = [], cumulativeTotal = [];
             let sumRain = 0, sumSnow = 0, sumTotal = 0;
-            for (let i = 0; i < timeRange; i++) {
+            for (let i = 0; i < hours.length; i++) {
                 sumRain += rain[i] || 0;
                 sumSnow += snow[i] || 0;
                 sumTotal += totalPrecip[i] || 0;
