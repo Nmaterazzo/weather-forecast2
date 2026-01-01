@@ -23,39 +23,39 @@
             background: #0f0f0f;
             color: #e0e0e0;
             min-height: 100vh;
-            padding: 20px;
+            padding: 5px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
         }
 
         .header {
             background: #1a1a1a;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
             border: 1px solid #2a2a2a;
         }
 
         h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-size: 18px;
+            margin-bottom: 5px;
             color: #fff;
         }
 
         .subtitle {
-            font-size: 14px;
+            font-size: 11px;
             color: #999;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .input-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 10px;
         }
 
         input {
@@ -185,14 +185,14 @@
 
         .chart-card {
             background: #1a1a1a;
-            padding: 25px;
-            border-radius: 12px;
+            padding: 10px;
+            border-radius: 8px;
             border: 1px solid #2a2a2a;
         }
 
         .chart-title {
-            font-size: 18px;
-            margin-bottom: 20px;
+            font-size: 14px;
+            margin-bottom: 10px;
             color: #fff;
         }
 
@@ -304,13 +304,13 @@
         }
 
         .expand-btn {
-            padding: 8px 16px;
+            padding: 5px 10px;
             background: #252525;
             border: 1px solid #4a90e2;
-            border-radius: 6px;
+            border-radius: 4px;
             color: #4a90e2;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 10px;
             transition: all 0.2s;
         }
 
@@ -326,20 +326,20 @@
 
         .heatmap {
             display: grid;
-            grid-template-columns: 120px repeat(24, 60px);
-            gap: 3px;
-            min-width: 1560px;
+            grid-template-columns: 60px repeat(24, 32px);
+            gap: 1px;
+            min-width: 828px;
         }
 
         .heatmap-label {
             display: flex;
             align-items: center;
-            padding: 12px;
+            padding: 5px;
             background: #252525;
-            font-size: 14px;
+            font-size: 9px;
             color: #e0e0e0;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 3px;
             position: sticky;
             left: 0;
             z-index: 10;
@@ -347,11 +347,11 @@
 
         .heatmap-hour {
             text-align: center;
-            padding: 10px 5px;
+            padding: 4px 2px;
             background: #252525;
-            font-size: 12px;
+            font-size: 8px;
             color: #999;
-            border-radius: 6px;
+            border-radius: 3px;
             font-weight: 600;
         }
 
@@ -365,14 +365,14 @@
         }
 
         .heatmap-cell {
-            height: 60px;
+            height: 32px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: 9px;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 3px;
             position: relative;
             transition: transform 0.2s;
         }
@@ -384,7 +384,7 @@
         }
 
         .heatmap-cell.current {
-            border: 2px solid #4a90e2;
+            border: 1px solid #4a90e2;
         }
 
         .heatmap-cell.historical {
@@ -392,14 +392,14 @@
         }
 
         .cell-main {
-            font-size: 15px;
+            font-size: 9px;
             font-weight: 700;
         }
 
         .cell-sub {
-            font-size: 10px;
+            font-size: 7px;
             opacity: 0.8;
-            margin-top: 2px;
+            margin-top: 0px;
         }
 
         .temp-freezing { background: #9b59b6; }
@@ -411,7 +411,7 @@
 
         .condition-cell {
             background: #252525;
-            font-size: 28px;
+            font-size: 16px;
         }
 
         .precip-cell {
@@ -439,14 +439,14 @@
 
         .daily-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 6px;
         }
 
         .day-card {
-            border-radius: 12px;
-            padding: 20px;
-            border: 2px solid #333;
+            border-radius: 6px;
+            padding: 8px;
+            border: 1px solid #333;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -465,44 +465,44 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 12px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
         }
 
         .day-card-day {
-            font-size: 20px;
+            font-size: 12px;
             font-weight: 700;
             color: #fff;
         }
 
         .day-card-date {
-            font-size: 13px;
+            font-size: 9px;
             color: #999;
         }
 
         .day-card-condition {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 6px;
         }
 
         .day-condition-icon {
-            font-size: 48px;
-            margin-bottom: 8px;
+            font-size: 22px;
+            margin-bottom: 3px;
         }
 
         .day-condition-text {
-            font-size: 14px;
+            font-size: 9px;
             color: #999;
         }
 
         .day-card-temps {
             display: flex;
             justify-content: space-around;
-            margin-bottom: 15px;
-            padding: 15px;
+            margin-bottom: 6px;
+            padding: 6px;
             background: #1a1a1a;
-            border-radius: 8px;
+            border-radius: 4px;
         }
 
         .day-temp-high, .day-temp-low {
@@ -510,42 +510,43 @@
         }
 
         .day-temp-label {
-            font-size: 11px;
+            font-size: 8px;
             color: #999;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
             text-transform: uppercase;
         }
 
         .day-temp-value {
-            font-size: 28px;
+            font-size: 16px;
             font-weight: 700;
         }
 
         .day-card-stats {
             display: grid;
-            gap: 8px;
+            gap: 3px;
         }
 
         .day-stat-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 12px;
+            padding: 4px 6px;
             background: #1a1a1a;
-            border-radius: 6px;
-            font-size: 13px;
+            border-radius: 3px;
+            font-size: 9px;
         }
 
         .day-stat-label {
             color: #999;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 3px;
         }
 
         .day-stat-value {
             font-weight: 600;
             color: #e0e0e0;
+            font-size: 9px;
         }
 
         .day-stat-value.rain {
@@ -557,9 +558,9 @@
         }
 
         .day-rain-time {
-            font-size: 11px;
+            font-size: 8px;
             color: #666;
-            margin-left: 5px;
+            margin-left: 3px;
         }
 
         /* Hourly Modal */
