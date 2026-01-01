@@ -119,50 +119,73 @@
         }
 
         .current-weather {
-            background: #1a1a1a;
-            padding: 8px;
-            border-radius: 6px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+            padding: 10px;
+            border-radius: 8px;
             margin-bottom: 8px;
             border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .location-header {
-            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #333;
         }
 
         .location-name {
-            font-size: 12px;
+            font-size: 14px;
             color: #fff;
-            margin-bottom: 2px;
+            font-weight: 700;
+            margin-bottom: 0;
         }
 
         .model-name {
             color: #4a90e2;
-            font-size: 9px;
+            font-size: 8px;
+            background: rgba(74, 144, 226, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
         }
 
         .current-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 5px;
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            gap: 6px;
         }
 
         .current-item {
-            background: #252525;
+            background: rgba(37, 37, 37, 0.5);
             padding: 6px;
             border-radius: 4px;
+            text-align: center;
+            border: 1px solid #333;
+            transition: all 0.2s;
+        }
+
+        .current-item:hover {
+            background: #252525;
+            border-color: #4a90e2;
+            transform: translateY(-1px);
         }
 
         .current-label {
-            font-size: 8px;
+            font-size: 7px;
             color: #999;
             margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .current-value {
-            font-size: 12px;
+            font-size: 16px;
             font-weight: 700;
             color: #fff;
+            line-height: 1;
         }
 
         .current-value.temp {
