@@ -416,10 +416,12 @@
 
         .precip-cell {
             background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: #fff;
         }
 
         .wind-cell {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: #fff;
         }
 
         .extra-rows {
@@ -840,7 +842,7 @@
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div class="chart-title" style="margin: 0;">Today's Hourly Forecast</div>
-                        <button class="expand-btn" id="expandBtn" onclick="toggleHeatmapExpand()">Show Gusts & Feels Like</button>
+                        <button class="expand-btn" id="expandBtn" onclick="toggleHeatmapExpand()">Show Feels Like & Gusts</button>
                     </div>
                     <div class="heatmap-container">
                         <div class="heatmap" id="heatmapGrid">
@@ -873,7 +875,12 @@
                 </div>
             </div>
 
-            <div class="charts-container">
+            <div class="chart-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="chart-title" style="margin: 0;">Detailed Charts</div>
+                    <button class="expand-btn" id="chartsToggleBtn" onclick="toggleCharts()">Show Charts</button>
+                </div>
+                <div class="charts-container" id="detailedCharts" style="display: none;">
                 <div class="chart-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div class="chart-title" style="margin: 0;">Temperature & Feels Like Forecast</div>
@@ -946,12 +953,7 @@
                     </div>
                 </div>
             </div>
-
-            <div class="hourly-forecast">
-                <div class="chart-card">
-                    <div class="chart-title">Hourly Forecast</div>
-                    <div id="hourlyTable" style="overflow-x: auto;"></div>
-                </div>
+            </div>
             </div>
 
             <div class="radar-section">
@@ -1664,20 +1666,69 @@
             
             if (extraRows && extraRows.classList.contains('expanded')) {
                 extraRows.classList.remove('expanded');
-                btn.textContent = 'Show Gusts & Feels Like';
+                btn.textContent = 'Show Feels Like & Gusts';
             } else if (extraRows) {
                 extraRows.classList.add('expanded');
                 btn.textContent = 'Hide Extra Rows';
             }
         }
 
+        function toggleCharts() {
+            const charts = document.getElementById('detailedCharts');
+            const btn = document.getElementById('chartsToggleBtn');
+            
+            if (charts.style.display === 'none') {
+                charts.style.display = 'grid';
+                btn.textContent = 'Hide Charts';
+            } else {
+                charts.style.display = 'none';
+                btn.textContent = 'Show Charts';
+            }
+        }
+
         function getTempClass(temp) {
-            if (temp <= 32) return 'temp-freezing'; // Purple
-            if (temp <= 49) return 'temp-cold'; // Blue
-            if (temp <= 72) return 'temp-cool'; // Green
-            if (temp <= 85) return 'temp-warm'; // Yellow
-            if (temp <= 99) return 'temp-hot'; // Orange
-            return 'temp-extreme'; // Red
+            // Smooth color gradient instead of strict cutoffs
+            // Returns a CSS color string
+            
+            if (temp <= 32) {
+                // Purple for freezing
+                return 'rgb(155, 89, 182)';
+            } else if (temp <= 49) {
+                // Purple to Blue (33-49)
+                const percent = (temp - 32) / (49 - 32);
+                const r = Math.round(155 + (52 - 155) * percent);
+                const g = Math.round(89 + (152 - 89) * percent);
+                const b = Math.round(182 + (219 - 182) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 72) {
+                // Blue to Green (50-72)
+                const percent = (temp - 49) / (72 - 49);
+                const r = Math.round(52 + (39 - 52) * percent);
+                const g = Math.round(152 + (174 - 152) * percent);
+                const b = Math.round(219 + (96 - 219) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 85) {
+                // Green to Yellow (73-85)
+                const percent = (temp - 72) / (85 - 72);
+                const r = Math.round(39 + (241 - 39) * percent);
+                const g = Math.round(174 + (196 - 174) * percent);
+                const b = Math.round(96 + (15 - 96) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else if (temp <= 99) {
+                // Yellow to Orange (86-99)
+                const percent = (temp - 85) / (99 - 85);
+                const r = Math.round(241 + (230 - 241) * percent);
+                const g = Math.round(196 + (126 - 196) * percent);
+                const b = Math.round(15 + (34 - 15) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else {
+                // Orange to Red (100+)
+                const percent = Math.min((temp - 99) / 10, 1); // Cap at 109°
+                const r = Math.round(230 + (231 - 230) * percent);
+                const g = Math.round(126 + (76 - 126) * percent);
+                const b = Math.round(34 + (60 - 34) * percent);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
         }
 
         function getTempOpacity(temp, temps) {
@@ -1742,16 +1793,39 @@
                 if (hour < todayIndices.length) {
                     const idx = todayIndices[hour];
                     const temp = Math.round(hourlyData.temperature_2m[idx]);
-                    const tempClass = getTempClass(temp);
+                    const color = getTempClass(temp);
                     const opacity = getTempOpacity(temp, temps);
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell ${tempClass} ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${temp}°</div></div>`;
+                    html += `<div class="heatmap-cell ${cellClass}" style="background: ${color}; opacity: ${opacity};"><div class="cell-main">${temp}°</div></div>`;
                 } else {
                     html += '<div class="heatmap-cell" style="background: #1a1a1a;">--</div>';
                 }
             }
+
+            // Extra rows
+            html += '<div class="extra-rows" id="heatmapExtraRows">';
+
+            // Feels Like row (in expandable section, between temp and conditions)
+            html += '<div class="heatmap-label">Feels Like</div>';
+            const feelsLike = todayIndices.map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
+            for (let hour = 0; hour < 24; hour++) {
+                if (hour < todayIndices.length) {
+                    const idx = todayIndices[hour];
+                    const feels = Math.round(hourlyData.apparent_temperature?.[idx] || hourlyData.temperature_2m[idx]);
+                    const color = getTempClass(feels);
+                    const opacity = getTempOpacity(feels, feelsLike);
+                    const isPast = hour < currentHour;
+                    const isCurrent = hour === currentHour;
+                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                    html += `<div class="heatmap-cell ${cellClass}" style="background: ${color}; opacity: ${opacity};"><div class="cell-main">${feels}°</div></div>`;
+                } else {
+                    html += '<div class="heatmap-cell" style="background: #1a1a1a;">--</div>';
+                }
+            }
+
+            html += '</div>';
 
             // Conditions row
             html += '<div class="heatmap-label">Conditions</div>';
@@ -1803,7 +1877,7 @@
                 }
             }
 
-            // Extra rows
+            // Extra rows (just Wind Gusts now)
             html += '<div class="extra-rows" id="heatmapExtraRows">';
 
             // Wind Gusts row
@@ -1821,24 +1895,6 @@
                     html += `<div class="heatmap-cell wind-cell ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${gust}<div class="cell-sub">mph</div></div></div>`;
                 } else {
                     html += '<div class="heatmap-cell wind-cell" style="opacity: 0.2;">--</div>';
-                }
-            }
-
-            // Feels Like row
-            html += '<div class="heatmap-label">Feels Like</div>';
-            const feelsLike = todayIndices.map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
-            for (let hour = 0; hour < 24; hour++) {
-                if (hour < todayIndices.length) {
-                    const idx = todayIndices[hour];
-                    const feels = Math.round(hourlyData.apparent_temperature?.[idx] || hourlyData.temperature_2m[idx]);
-                    const tempClass = getTempClass(feels);
-                    const opacity = getTempOpacity(feels, feelsLike);
-                    const isPast = hour < currentHour;
-                    const isCurrent = hour === currentHour;
-                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    html += `<div class="heatmap-cell ${tempClass} ${cellClass}" style="opacity: ${opacity};"><div class="cell-main">${feels}°</div></div>`;
-                } else {
-                    html += '<div class="heatmap-cell" style="background: #1a1a1a;">--</div>';
                 }
             }
 
