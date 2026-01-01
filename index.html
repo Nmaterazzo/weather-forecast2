@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Model Forecast</title>
+    <title>Weather Model Forecast - Smart Blend</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
           crossorigin=""/>
@@ -41,8 +41,14 @@
 
         h1 {
             font-size: 28px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             color: #fff;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
         }
 
         .input-group {
@@ -66,35 +72,6 @@
             border-color: #4a90e2;
         }
 
-        .model-selector {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .model-btn {
-            padding: 12px 24px;
-            border: 2px solid #333;
-            background: #1a1a1a;
-            color: #e0e0e0;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .model-btn:hover {
-            border-color: #555;
-            background: #252525;
-        }
-
-        .model-btn.active {
-            background: #4a90e2;
-            border-color: #4a90e2;
-            color: #fff;
-        }
-
         .get-forecast-btn {
             padding: 12px 32px;
             background: #4a90e2;
@@ -109,11 +86,6 @@
 
         .get-forecast-btn:hover {
             background: #3d7bc7;
-        }
-
-        .get-forecast-btn:disabled {
-            background: #333;
-            cursor: not-allowed;
         }
 
         .preset-locations {
@@ -373,6 +345,19 @@
             color: #9b59b6;
         }
 
+        .model-info {
+            background: #252525;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .model-info strong {
+            color: #4a90e2;
+        }
+
         @media (max-width: 768px) {
             .input-group {
                 grid-template-columns: 1fr;
@@ -389,7 +374,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Weather Model Forecast</h1>
+            <h1>Smart Blend Weather Forecast</h1>
+            <div class="subtitle">Intelligently blends Weather.gov, Open-Meteo, ECMWF, and GFS based on forecast time range</div>
             
             <div class="input-group">
                 <input type="text" id="cityInput" placeholder="Enter city name (e.g., Orlando, FL)" style="grid-column: 1 / -1;" onkeypress="if(event.key==='Enter') searchCity()">
@@ -404,27 +390,19 @@
                 <button class="preset-btn" onclick="setLocation(46.8139, -71.2080)">Quebec City, QC</button>
                 <button class="preset-btn" onclick="setLocation(28.5383, -81.3792)">Orlando, FL</button>
             </div>
-
-            <div class="model-selector">
-                <button class="model-btn active" data-model="weathergov" onclick="selectModel('weathergov')">Weather.gov Blend</button>
-                <button class="model-btn" data-model="bestmatch" onclick="selectModel('bestmatch')">Open-Meteo Best Match</button>
-                <button class="model-btn" data-model="gfs" onclick="selectModel('gfs')">GFS Only</button>
-                <button class="model-btn" data-model="ecmwf" onclick="selectModel('ecmwf')">ECMWF Only</button>
-                <button class="model-btn" data-model="average" onclick="selectModel('average')">Average All 4</button>
-            </div>
         </div>
 
         <div class="error" id="error"></div>
 
         <div class="loading" id="loading" style="display: none;">
-            Loading forecast data...
+            Loading forecast data from multiple models...
         </div>
 
         <div class="forecast-section" id="forecast">
             <div class="current-weather">
                 <div class="location-header">
                     <div class="location-name" id="locationName">--</div>
-                    <div class="model-name" id="modelName">--</div>
+                    <div class="model-name" id="modelName">Smart Blend Forecast</div>
                     <div class="model-name" id="modelRun" style="color: #999; font-size: 12px; margin-top: 5px;">--</div>
                 </div>
 
@@ -440,6 +418,10 @@
                     <div class="current-item">
                         <div class="current-label">Wind Speed</div>
                         <div class="current-value wind" id="wind">-- mph</div>
+                    </div>
+                    <div class="current-item">
+                        <div class="current-label">Wind Gusts</div>
+                        <div class="current-value wind" id="windGusts">-- mph</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Humidity</div>
@@ -482,13 +464,37 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div class="chart-title" style="margin: 0;">Temperature & Feels Like Forecast</div>
                         <select id="timeRange" onchange="updateCharts()" style="padding: 8px 12px; background: #252525; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 14px;">
-                            <option value="24">24 Hours</option>
-                            <option value="48" selected>48 Hours</option>
-                            <option value="72">72 Hours</option>
-                            <option value="96">96 Hours</option>
-                            <option value="120">120 Hours</option>
-                            <option value="240">240 Hours (ECMWF/GFS)</option>
+                            <option value="24">24 Hours (Weather.gov + Best Match)</option>
+                            <option value="48" selected>48 Hours (+ ECMWF)</option>
+                            <option value="72">72 Hours (+ GFS)</option>
+                            <option value="120">120 Hours (ECMWF + GFS)</option>
+                            <option value="240">240 Hours (GFS Only)</option>
                         </select>
+                    </div>
+                    <div id="modelInfo24" class="model-info" style="display: none;">
+                        <strong>0-24 hours:</strong> Weather.gov Blend + Open-Meteo Best Match averaged
+                    </div>
+                    <div id="modelInfo48" class="model-info">
+                        <strong>0-24 hours:</strong> Weather.gov + Best Match<br>
+                        <strong>25-48 hours:</strong> Weather.gov + Best Match + ECMWF averaged
+                    </div>
+                    <div id="modelInfo72" class="model-info" style="display: none;">
+                        <strong>0-24 hours:</strong> Weather.gov + Best Match<br>
+                        <strong>25-48 hours:</strong> Weather.gov + Best Match + ECMWF<br>
+                        <strong>49-72 hours:</strong> Weather.gov + Best Match + ECMWF + GFS averaged
+                    </div>
+                    <div id="modelInfo120" class="model-info" style="display: none;">
+                        <strong>0-24 hours:</strong> Weather.gov + Best Match<br>
+                        <strong>25-48 hours:</strong> Weather.gov + Best Match + ECMWF<br>
+                        <strong>49-72 hours:</strong> Weather.gov + Best Match + ECMWF + GFS<br>
+                        <strong>73-120 hours:</strong> ECMWF + GFS averaged
+                    </div>
+                    <div id="modelInfo240" class="model-info" style="display: none;">
+                        <strong>0-24 hours:</strong> Weather.gov + Best Match<br>
+                        <strong>25-48 hours:</strong> Weather.gov + Best Match + ECMWF<br>
+                        <strong>49-72 hours:</strong> Weather.gov + Best Match + ECMWF + GFS<br>
+                        <strong>73-120 hours:</strong> ECMWF + GFS<br>
+                        <strong>121-240 hours:</strong> GFS only
                     </div>
                     <div class="chart-wrapper">
                         <canvas id="tempChart"></canvas>
@@ -511,7 +517,7 @@
                 </div>
 
                 <div class="chart-card">
-                    <div class="chart-title">Wind Speed Forecast</div>
+                    <div class="chart-title">Wind Speed & Gusts Forecast</div>
                     <div class="chart-wrapper">
                         <canvas id="windChart"></canvas>
                     </div>
@@ -554,7 +560,6 @@
     </div>
 
     <script>
-        let currentModel = 'weathergov';
         let tempChart = null;
         let precipChart = null;
         let precipAccumChart = null;
@@ -567,14 +572,6 @@
         let radarFrames = [];
         let radarAnimationTimer = null;
         let currentFrameIndex = 0;
-
-        function selectModel(model) {
-            currentModel = model;
-            document.querySelectorAll('.model-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-model="${model}"]`).classList.add('active');
-        }
 
         function setLocation(lat, lng) {
             getForecast(lat, lng);
@@ -642,157 +639,14 @@
             document.getElementById('forecast').classList.remove('active');
             document.getElementById('error').classList.remove('active');
 
-            if (currentModel === 'weathergov') {
-                await fetchWeatherGov(lat, lng);
-            } else if (currentModel === 'bestmatch') {
-                await fetchBestMatch(lat, lng);
-            } else if (currentModel === 'gfs') {
-                await fetchGFS(lat, lng);
-            } else if (currentModel === 'ecmwf') {
-                await fetchECMWF(lat, lng);
-            } else if (currentModel === 'average') {
-                await fetchAverage(lat, lng);
-            }
+            await fetchSmartBlend(lat, lng);
         }
 
-        // 1. Weather.gov Blend
-        async function fetchWeatherGov(lat, lng) {
-            try {
-                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
-                if (!isUS) {
-                    showError('Weather.gov only available for US locations. Switching to Open-Meteo Best Match...');
-                    currentModel = 'bestmatch';
-                    selectModel('bestmatch');
-                    await fetchBestMatch(lat, lng);
-                    return;
-                }
-
-                const pointsResponse = await fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
-                    headers: {'User-Agent': '(WeatherApp, contact@example.com)', 'Accept': 'application/geo+json'}
-                });
-
-                if (!pointsResponse.ok) throw new Error(`Weather.gov API error: ${pointsResponse.status}`);
-
-                const pointsData = await pointsResponse.json();
-                const forecastHourlyUrl = pointsData.properties.forecastHourly;
-
-                const forecastResponse = await fetch(forecastHourlyUrl, {
-                    headers: {'User-Agent': '(WeatherApp, contact@example.com)', 'Accept': 'application/geo+json'}
-                });
-
-                if (!forecastResponse.ok) throw new Error(`Forecast API error: ${forecastResponse.status}`);
-
-                const forecastData = await forecastResponse.json();
-                
-                setLocationName(lat, lng);
-                document.getElementById('modelName').textContent = 'Weather.gov Blended Forecast (HRRR/NAM/GFS)';
-                document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-
-                const periods = forecastData.properties.periods;
-                const current = periods[0];
-                
-                document.getElementById('temp').textContent = `${current.temperature}°F`;
-                document.getElementById('feelsLike').textContent = 'N/A';
-                document.getElementById('wind').textContent = current.windSpeed;
-                document.getElementById('humidity').textContent = current.relativeHumidity?.value ? `${Math.round(current.relativeHumidity.value)}%` : 'N/A';
-                document.getElementById('precip').textContent = current.probabilityOfPrecipitation?.value ? `${current.probabilityOfPrecipitation.value}%` : '0%';
-                document.getElementById('pressure').textContent = 'N/A';
-                document.getElementById('conditions').textContent = current.shortForecast;
-
-                const hourlyData = convertWeatherGovToStandard(periods);
-                currentForecastData = hourlyData;
-
-                await fetchHistoricalAndFinish(lat, lng);
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading Weather.gov: ${err.message}`);
-            }
-        }
-
-        // 2. Open-Meteo Best Match
-        async function fetchBestMatch(lat, lng) {
-            try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`;
-                
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`API returned ${response.status}`);
-                
-                const data = await response.json();
-
-                setLocationName(lat, lng);
-                const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
-                document.getElementById('modelName').textContent = `Open-Meteo Best Match (Auto-selected, likely ${isUS ? 'HRRR/NAM' : 'GFS'})`;
-                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-
-                updateCurrentConditions(data.current);
-                currentForecastData = data.hourly;
-
-                await fetchHistoricalAndFinish(lat, lng);
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading Best Match: ${err.message}`);
-            }
-        }
-
-        // 3. GFS Only
-        async function fetchGFS(lat, lng) {
-            try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`;
-                
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`API returned ${response.status}`);
-                
-                const data = await response.json();
-
-                setLocationName(lat, lng);
-                document.getElementById('modelName').textContent = 'GFS Only (13km, Global)';
-                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-
-                updateCurrentConditions(data.current);
-                currentForecastData = data.hourly;
-
-                await fetchHistoricalAndFinish(lat, lng);
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading GFS: ${err.message}`);
-            }
-        }
-
-        // 4. ECMWF Only
-        async function fetchECMWF(lat, lng) {
-            try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`;
-                
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`API returned ${response.status}`);
-                
-                const data = await response.json();
-
-                setLocationName(lat, lng);
-                document.getElementById('modelName').textContent = 'ECMWF Only (25km, Global)';
-                document.getElementById('modelRun').textContent = `Updated: ${new Date(data.current.time).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-
-                updateCurrentConditions(data.current);
-                currentForecastData = data.hourly;
-
-                await fetchHistoricalAndFinish(lat, lng);
-
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                showError(`Error loading ECMWF: ${err.message}`);
-            }
-        }
-
-        // 5. Average All 4
-        async function fetchAverage(lat, lng) {
+        async function fetchSmartBlend(lat, lng) {
             try {
                 const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
                 
                 let promises = [];
-                let modelNames = [];
 
                 // Fetch Weather.gov if US
                 if (isUS) {
@@ -806,21 +660,19 @@
                         .then(d => ({type: 'weathergov', data: d}))
                         .catch(() => null)
                     );
-                    modelNames.push('Weather.gov');
                 }
 
-                // Fetch the 3 Open-Meteo models
+                // Fetch Open-Meteo models: Best Match, GFS, ECMWF
                 promises.push(
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`)
-                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d})),
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`)
+                    .then(r => r.json()).then(d => ({type: 'bestmatch', data: d})),
                     
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`)
-                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d})),
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`)
+                    .then(r => r.json()).then(d => ({type: 'gfs', data: d})),
                     
-                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
-                    .then(r => r.json()).then(d => ({type: 'openmeteo', data: d}))
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=ecmwf_ifs025`)
+                    .then(r => r.json()).then(d => ({type: 'ecmwf', data: d}))
                 );
-                modelNames.push('Best Match', 'GFS', 'ECMWF');
 
                 const results = await Promise.all(promises);
                 const validResults = results.filter(r => r !== null);
@@ -829,27 +681,30 @@
                     throw new Error('Failed to fetch any models');
                 }
 
-                // Convert all to standard format
-                const standardized = validResults.map(r => {
-                    if (r.type === 'weathergov') {
-                        return convertWeatherGovToStandard(r.data.properties.periods);
-                    } else {
-                        return r.data.hourly;
-                    }
-                });
+                // Find each model
+                const weathergov = validResults.find(r => r.type === 'weathergov');
+                const bestmatch = validResults.find(r => r.type === 'bestmatch');
+                const gfs = validResults.find(r => r.type === 'gfs');
+                const ecmwf = validResults.find(r => r.type === 'ecmwf');
 
-                // Average them
-                const averaged = averageForecasts(standardized);
+                // Convert Weather.gov to standard format
+                let weathergovData = null;
+                if (weathergov) {
+                    weathergovData = convertWeatherGovToStandard(weathergov.data.properties.periods);
+                }
+
+                // Build custom smart blend
+                const blended = buildSmartBlend(weathergovData, bestmatch?.data.hourly, gfs?.data.hourly, ecmwf?.data.hourly);
 
                 setLocationName(lat, lng);
-                document.getElementById('modelName').textContent = `Averaged Forecast (${modelNames.filter((_, i) => validResults[i]).join(' + ')})`;
                 document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
 
                 // Average current conditions from Open-Meteo models
-                const omModels = validResults.filter(r => r.type === 'openmeteo').map(r => r.data.current);
+                const omModels = [bestmatch, gfs, ecmwf].filter(m => m).map(r => r.data.current);
                 const avgTemp = omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
                 const avgFeels = omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
                 const avgWind = omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
+                const avgGusts = omModels.reduce((s, d) => s + (d.wind_gusts_10m || 0), 0) / omModels.length;
                 const avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
                 const avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
                 const avgPressure = omModels.reduce((s, d) => s + (d.surface_pressure || 0), 0) / omModels.length;
@@ -857,22 +712,98 @@
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`;
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
+                document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
                 document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
                 document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
                 document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
                 document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
 
-                currentForecastData = averaged;
+                currentForecastData = blended;
 
                 await fetchHistoricalAndFinish(lat, lng);
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
-                showError(`Error loading averaged forecast: ${err.message}`);
+                showError(`Error loading forecast: ${err.message}`);
+                console.error(err);
             }
         }
 
-        // Helper functions
+        function buildSmartBlend(weathergov, bestmatch, gfs, ecmwf) {
+            // Find the longest forecast available (GFS should be longest)
+            const maxLength = Math.max(
+                weathergov?.time.length || 0,
+                bestmatch?.time.length || 0,
+                gfs?.time.length || 0,
+                ecmwf?.time.length || 0
+            );
+
+            const blended = {
+                time: [],
+                temperature_2m: [],
+                apparent_temperature: [],
+                precipitation_probability: [],
+                precipitation: [],
+                rain: [],
+                snowfall: [],
+                wind_speed_10m: [],
+                wind_gusts_10m: []
+            };
+
+            // Use GFS or ECMWF times as the base (they have the most hours)
+            const baseTimes = gfs?.time || ecmwf?.time;
+            
+            for (let i = 0; i < maxLength; i++) {
+                if (i < baseTimes.length) {
+                    blended.time.push(baseTimes[i]);
+                }
+
+                let modelsToAvg = [];
+
+                // 0-24 hours: Weather.gov + Best Match
+                if (i < 24) {
+                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
+                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
+                }
+                // 25-48 hours: Weather.gov + Best Match + ECMWF
+                else if (i < 48) {
+                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
+                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
+                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
+                }
+                // 49-72 hours: Weather.gov + Best Match + ECMWF + GFS
+                else if (i < 72) {
+                    if (weathergov && i < weathergov.time.length) modelsToAvg.push(weathergov);
+                    if (bestmatch && i < bestmatch.time.length) modelsToAvg.push(bestmatch);
+                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
+                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
+                }
+                // 73-120 hours: ECMWF + GFS
+                else if (i < 120) {
+                    if (ecmwf && i < ecmwf.time.length) modelsToAvg.push(ecmwf);
+                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
+                }
+                // 121-240 hours: GFS only
+                else {
+                    if (gfs && i < gfs.time.length) modelsToAvg.push(gfs);
+                }
+
+                if (modelsToAvg.length === 0) break;
+
+                // Average the models for this hour
+                blended.temperature_2m[i] = modelsToAvg.reduce((s, m) => s + (m.temperature_2m[i] || 0), 0) / modelsToAvg.length;
+                blended.apparent_temperature[i] = modelsToAvg.reduce((s, m) => s + (m.apparent_temperature?.[i] || m.temperature_2m[i]), 0) / modelsToAvg.length;
+                blended.precipitation_probability[i] = modelsToAvg.reduce((s, m) => s + (m.precipitation_probability?.[i] || 0), 0) / modelsToAvg.length;
+                blended.precipitation[i] = modelsToAvg.reduce((s, m) => s + (m.precipitation?.[i] || 0), 0) / modelsToAvg.length;
+                blended.rain[i] = modelsToAvg.reduce((s, m) => s + (m.rain?.[i] || 0), 0) / modelsToAvg.length;
+                blended.snowfall[i] = modelsToAvg.reduce((s, m) => s + (m.snowfall?.[i] || 0), 0) / modelsToAvg.length;
+                blended.wind_speed_10m[i] = modelsToAvg.reduce((s, m) => s + (m.wind_speed_10m[i] || 0), 0) / modelsToAvg.length;
+                blended.wind_gusts_10m[i] = modelsToAvg.reduce((s, m) => s + (m.wind_gusts_10m?.[i] || 0), 0) / modelsToAvg.length;
+            }
+
+            return blended;
+        }
+
         function convertWeatherGovToStandard(periods) {
             const hourlyData = {
                 time: [],
@@ -882,7 +813,8 @@
                 precipitation: [],
                 rain: [],
                 snowfall: [],
-                wind_speed_10m: []
+                wind_speed_10m: [],
+                wind_gusts_10m: []
             };
 
             periods.forEach(period => {
@@ -897,45 +829,10 @@
                 const windMatch = period.windSpeed.match(/(\d+)/);
                 const windSpeed = windMatch ? parseInt(windMatch[1]) : 0;
                 hourlyData.wind_speed_10m.push(windSpeed);
+                hourlyData.wind_gusts_10m.push(windSpeed * 1.3); // Estimate gusts as 1.3x wind speed
             });
 
             return hourlyData;
-        }
-
-        function averageForecasts(forecasts) {
-            const minLength = Math.min(...forecasts.map(f => f.time.length));
-            const averaged = {
-                time: forecasts[0].time.slice(0, minLength),
-                temperature_2m: [],
-                apparent_temperature: [],
-                precipitation_probability: [],
-                precipitation: [],
-                rain: [],
-                snowfall: [],
-                wind_speed_10m: []
-            };
-
-            for (let i = 0; i < minLength; i++) {
-                averaged.temperature_2m[i] = forecasts.reduce((s, f) => s + f.temperature_2m[i], 0) / forecasts.length;
-                averaged.apparent_temperature[i] = forecasts.reduce((s, f) => s + (f.apparent_temperature?.[i] || f.temperature_2m[i]), 0) / forecasts.length;
-                averaged.precipitation_probability[i] = forecasts.reduce((s, f) => s + (f.precipitation_probability?.[i] || 0), 0) / forecasts.length;
-                averaged.precipitation[i] = forecasts.reduce((s, f) => s + (f.precipitation?.[i] || 0), 0) / forecasts.length;
-                averaged.rain[i] = forecasts.reduce((s, f) => s + (f.rain?.[i] || 0), 0) / forecasts.length;
-                averaged.snowfall[i] = forecasts.reduce((s, f) => s + (f.snowfall?.[i] || 0), 0) / forecasts.length;
-                averaged.wind_speed_10m[i] = forecasts.reduce((s, f) => s + f.wind_speed_10m[i], 0) / forecasts.length;
-            }
-
-            return averaged;
-        }
-
-        function updateCurrentConditions(current) {
-            document.getElementById('temp').textContent = `${Math.round(current.temperature_2m)}°F`;
-            document.getElementById('feelsLike').textContent = current.apparent_temperature ? `${Math.round(current.apparent_temperature)}°F` : 'N/A';
-            document.getElementById('wind').textContent = `${Math.round(current.wind_speed_10m)} mph`;
-            document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
-            document.getElementById('precip').textContent = current.precipitation !== null ? `${current.precipitation.toFixed(2)} in` : '0.00 in';
-            document.getElementById('pressure').textContent = current.surface_pressure ? `${Math.round(current.surface_pressure)} mb` : 'N/A';
-            document.getElementById('conditions').textContent = getWeatherDescription(current.weather_code);
         }
 
         async function setLocationName(lat, lng) {
@@ -956,7 +853,7 @@
             const startDate = yesterday.toISOString().split('T')[0];
             const endDate = today.toISOString().split('T')[0];
             
-            const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
+            const historicalUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startDate}&end_date=${endDate}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
             const historicalResponse = await fetch(historicalUrl);
             const historicalData = historicalResponse.ok ? await historicalResponse.json() : null;
 
@@ -1046,8 +943,16 @@
         function updateCharts(historicalData) {
             if (!currentForecastData) return;
 
-            const hourlyData = currentForecastData;
             const timeRange = parseInt(document.getElementById('timeRange').value);
+            
+            // Show/hide model info boxes
+            document.getElementById('modelInfo24').style.display = timeRange === 24 ? 'block' : 'none';
+            document.getElementById('modelInfo48').style.display = timeRange === 48 ? 'block' : 'none';
+            document.getElementById('modelInfo72').style.display = timeRange === 72 ? 'block' : 'none';
+            document.getElementById('modelInfo120').style.display = timeRange === 120 ? 'block' : 'none';
+            document.getElementById('modelInfo240').style.display = timeRange === 240 ? 'block' : 'none';
+
+            const hourlyData = currentForecastData;
             
             const now = new Date();
             let startIndex = hourlyData.time.findIndex(t => new Date(t) >= now);
@@ -1064,6 +969,7 @@
             const rain = hourlyData.rain?.slice(startIndex, startIndex + timeRange) || totalPrecip;
             const snow = hourlyData.snowfall?.slice(startIndex, startIndex + timeRange) || Array(timeRange).fill(0);
             const wind = hourlyData.wind_speed_10m.slice(startIndex, startIndex + timeRange);
+            const gusts = hourlyData.wind_gusts_10m?.slice(startIndex, startIndex + timeRange) || wind.map(w => w * 1.3);
 
             const totalRain = rain.reduce((a, b) => a + (b || 0), 0);
             const totalSnow = snow.reduce((a, b) => a + (b || 0), 0);
@@ -1073,9 +979,8 @@
 
             generateDailyForecasts(hourlyData, startIndex);
             if (historicalData) generateHistoricalChart(historicalData);
-            generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind);
+            generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts);
 
-            // Simplified chart generation
             if (tempChart) tempChart.destroy();
             tempChart = new Chart(document.getElementById('tempChart'), {
                 type: 'line',
@@ -1207,6 +1112,13 @@
                         tension: 0.4,
                         fill: true,
                         borderWidth: 2
+                    }, {
+                        label: 'Wind Gusts (mph)',
+                        data: gusts,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        borderDash: [5, 5]
                     }]
                 },
                 options: {
@@ -1229,6 +1141,7 @@
             );
             const temps = historicalData.hourly.temperature_2m || [];
             const wind = historicalData.hourly.wind_speed_10m || [];
+            const gusts = historicalData.hourly.wind_gusts_10m || wind.map(w => w * 1.3);
             const rain = historicalData.hourly.rain || [];
             const snow = historicalData.hourly.snowfall || [];
 
@@ -1259,6 +1172,14 @@
                         borderColor: '#f39c12',
                         tension: 0.4,
                         borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Gusts (mph)',
+                        data: gusts,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        borderWidth: 1,
+                        borderDash: [3, 3],
                         yAxisID: 'y'
                     }, {
                         label: 'Rain (in)',
@@ -1311,6 +1232,7 @@
 
                 const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
                 const dayWind = dayIndices.map(i => hourlyData.wind_speed_10m[i]);
+                const dayGusts = dayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
                 const dayRain = dayIndices.map(i => hourlyData.rain?.[i] || 0);
                 const daySnow = dayIndices.map(i => hourlyData.snowfall?.[i] || 0);
 
@@ -1318,7 +1240,7 @@
                     highTemp: Math.max(...dayTemps),
                     lowTemp: Math.min(...dayTemps),
                     highWind: Math.max(...dayWind),
-                    lowWind: Math.min(...dayWind),
+                    highGusts: Math.max(...dayGusts),
                     totalRain: dayRain.reduce((a, b) => a + b, 0),
                     totalSnow: daySnow.reduce((a, b) => a + b, 0)
                 };
@@ -1328,7 +1250,8 @@
                 if (!data) return '<div class="daily-value">No data</div>';
                 return `
                     <div class="daily-stat"><span class="daily-label">Temp:</span><span class="daily-value temp">${Math.round(data.lowTemp)}°-${Math.round(data.highTemp)}°F</span></div>
-                    <div class="daily-stat"><span class="daily-label">Wind:</span><span class="daily-value wind">${Math.round(data.lowWind)}-${Math.round(data.highWind)} mph</span></div>
+                    <div class="daily-stat"><span class="daily-label">Wind:</span><span class="daily-value wind">${Math.round(data.highWind)} mph</span></div>
+                    <div class="daily-stat"><span class="daily-label">Gusts:</span><span class="daily-value wind">${Math.round(data.highGusts)} mph</span></div>
                     <div class="daily-stat"><span class="daily-label">Rain:</span><span class="daily-value rain">${data.totalRain.toFixed(2)}"</span></div>
                     <div class="daily-stat"><span class="daily-label">Snow:</span><span class="daily-value snow">${data.totalSnow.toFixed(2)}"</span></div>
                 `;
@@ -1339,8 +1262,8 @@
             document.getElementById('dayAfterForecast').innerHTML = formatDayForecast(getDayData(dayAfterStart, dayAfterEnd));
         }
 
-        function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind) {
-            let html = '<table class="hourly-table"><thead><tr><th>Time</th><th>Temp</th><th>Feels</th><th>Precip %</th><th>Rain</th><th>Snow</th><th>Wind</th></tr></thead><tbody>';
+        function generateHourlyTable(hours, temps, feelsLike, precipProb, totalPrecip, rain, snow, wind, gusts) {
+            let html = '<table class="hourly-table"><thead><tr><th>Time</th><th>Temp</th><th>Feels</th><th>Precip %</th><th>Rain</th><th>Snow</th><th>Wind</th><th>Gusts</th></tr></thead><tbody>';
             for (let i = 0; i < hours.length; i++) {
                 html += `<tr>
                     <td>${hours[i]}</td>
@@ -1350,6 +1273,7 @@
                     <td class="rain-cell">${rain[i].toFixed(2)}"</td>
                     <td class="snow-cell">${snow[i].toFixed(2)}"</td>
                     <td class="wind-cell">${Math.round(wind[i])} mph</td>
+                    <td class="wind-cell">${Math.round(gusts[i])} mph</td>
                 </tr>`;
             }
             html += '</tbody></table>';
