@@ -2021,8 +2021,10 @@
             // Check if we should show night/sunrise/sunset variants
             const isNight = hour !== undefined && sunriseHour !== undefined && sunsetHour !== undefined && 
                            (hour < Math.floor(sunriseHour) || hour > Math.floor(sunsetHour));
+            // Sunrise is the hour that contains the sunrise time (floor of decimal)
             const isSunrise = hour !== undefined && sunriseHour !== undefined && 
                              hour === Math.floor(sunriseHour);
+            // Sunset is the hour that contains the sunset time (floor of decimal)
             const isSunset = hour !== undefined && sunsetHour !== undefined && 
                             hour === Math.floor(sunsetHour);
             
@@ -2146,6 +2148,10 @@
                 if (sunTimes.sunrise !== null && sunTimes.sunset !== null) {
                     sunriseHour = sunTimes.sunrise;
                     sunsetHour = sunTimes.sunset;
+                    console.log('Location:', currentLatLng.lat, currentLatLng.lng);
+                    console.log('Sunrise hour:', sunriseHour, '(floor:', Math.floor(sunriseHour), ')');
+                    console.log('Sunset hour:', sunsetHour, '(floor:', Math.floor(sunsetHour), ')');
+                    console.log('Current hour:', currentHour);
                 }
             }
 
