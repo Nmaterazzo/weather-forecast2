@@ -2186,7 +2186,31 @@
                 const isPast = hour < currentHour;
                 const isCurrent = hour === currentHour;
                 const hourClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                const hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+                
+                // Check if this hour contains sunrise or sunset
+                const isSunriseHour = hour === Math.floor(sunriseHour);
+                const isSunsetHour = hour === Math.floor(sunsetHour);
+                
+                let hourLabel;
+                if (isSunriseHour) {
+                    // Show sunrise time (convert decimal to HH:MM)
+                    const sunriseMinutes = Math.round((sunriseHour - Math.floor(sunriseHour)) * 60);
+                    const sunriseHourDisplay = Math.floor(sunriseHour);
+                    const sunriseAMPM = sunriseHourDisplay < 12 ? 'AM' : 'PM';
+                    const sunriseHour12 = sunriseHourDisplay === 0 ? 12 : sunriseHourDisplay > 12 ? sunriseHourDisplay - 12 : sunriseHourDisplay;
+                    hourLabel = `🌅${sunriseHour12}:${sunriseMinutes.toString().padStart(2, '0')}`;
+                } else if (isSunsetHour) {
+                    // Show sunset time
+                    const sunsetMinutes = Math.round((sunsetHour - Math.floor(sunsetHour)) * 60);
+                    const sunsetHourDisplay = Math.floor(sunsetHour);
+                    const sunsetAMPM = sunsetHourDisplay < 12 ? 'AM' : 'PM';
+                    const sunsetHour12 = sunsetHourDisplay === 0 ? 12 : sunsetHourDisplay > 12 ? sunsetHourDisplay - 12 : sunsetHourDisplay;
+                    hourLabel = `🌇${sunsetHour12}:${sunsetMinutes.toString().padStart(2, '0')}`;
+                } else {
+                    // Regular hour display
+                    hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+                }
+                
                 html += `<div class="heatmap-hour ${hourClass}">${hourLabel}</div>`;
             }
 
