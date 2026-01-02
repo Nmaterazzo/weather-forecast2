@@ -2091,7 +2091,7 @@
             const Jrise = Jtransit - omega / 360;
             const Jset = Jtransit + omega / 360;
             
-            // Convert from Julian day fraction to hours
+            // Convert from Julian day fraction to hours (this is already in solar time)
             let sunrise = ((Jrise - jdn) * 24 + 12) % 24;
             let sunset = ((Jset - jdn) * 24 + 12) % 24;
             
@@ -2099,16 +2099,9 @@
             if (sunrise < 0) sunrise += 24;
             if (sunset < 0) sunset += 24;
             
-            // Apply timezone offset to get local time
-            // Get the timezone offset in hours (negative for west of UTC, positive for east)
-            const timezoneOffsetHours = -date.getTimezoneOffset() / 60;
-            
-            sunrise = (sunrise + timezoneOffsetHours) % 24;
-            sunset = (sunset + timezoneOffsetHours) % 24;
-            
-            // Handle wrap-around
-            if (sunrise < 0) sunrise += 24;
-            if (sunset < 0) sunset += 24;
+            // The calculation above gives us solar time at the longitude
+            // This is already correct for the location - no timezone adjustment needed!
+            // The lng/360 term in J already accounts for the location's timezone
             
             return {
                 sunrise: sunrise,
