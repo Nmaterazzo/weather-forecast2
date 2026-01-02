@@ -926,7 +926,7 @@
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
+                        <div class="current-value" style="font-size: 11px;" id="conditions">--</div>
                     </div>
                 </div>
                 <!-- Hidden temp for heatmap reference -->
@@ -2356,6 +2356,7 @@
                 const dayTemps = dayIndices.map(i => hourlyData.temperature_2m[i]);
                 const dayFeels = dayIndices.map(i => hourlyData.apparent_temperature?.[i] || hourlyData.temperature_2m[i]);
                 const dayRain = dayIndices.map(i => hourlyData.rain?.[i] || 0);
+                const daySnow = dayIndices.map(i => hourlyData.snowfall?.[i] || 0);
                 const dayPrecipProb = dayIndices.map(i => hourlyData.precipitation_probability?.[i] || 0);
                 const dayWind = dayIndices.map(i => hourlyData.wind_gusts_10m?.[i] || hourlyData.wind_speed_10m[i] * 1.3);
                 const dayCodes = dayIndices.map(i => hourlyData.weather_code?.[i] || 0);
@@ -2365,8 +2366,31 @@
                 const highFeels = Math.max(...dayFeels);
                 const lowFeels = Math.min(...dayFeels);
                 const totalRain = dayRain.reduce((a, b) => a + b, 0);
+                const totalSnow = daySnow.reduce((a, b) => a + b, 0);
                 const maxPrecipProb = Math.max(...dayPrecipProb);
                 const maxWind = Math.max(...dayWind);
+
+                // Determine precipitation type dynamically
+                let precipEmoji = '💧';
+                let precipType = 'Rain';
+                let precipAmount = totalRain.toFixed(2);
+                
+                if (totalRain > 0 && totalSnow > 0) {
+                    // Mixed precipitation
+                    precipEmoji = '💧❄️';
+                    precipType = 'Mix';
+                    precipAmount = (totalRain + totalSnow).toFixed(2);
+                } else if (totalSnow > 0) {
+                    // Snow only
+                    precipEmoji = '❄️';
+                    precipType = 'Snow';
+                    precipAmount = totalSnow.toFixed(2);
+                } else {
+                    // Rain only (or no precip)
+                    precipEmoji = '💧';
+                    precipType = 'Rain';
+                    precipAmount = totalRain.toFixed(2);
+                }
 
                 const codeCount = {};
                 dayCodes.forEach(code => codeCount[code] = (codeCount[code] || 0) + 1);
@@ -2394,7 +2418,9 @@
                     lowTemp: Math.round(lowTemp),
                     highFeels: Math.round(highFeels),
                     lowFeels: Math.round(lowFeels),
-                    totalRain: totalRain.toFixed(2),
+                    precipEmoji,
+                    precipType,
+                    precipAmount,
                     maxPrecipProb: Math.round(maxPrecipProb),
                     maxWind: Math.round(maxWind),
                     rainTime,
@@ -2440,8 +2466,8 @@
                         </div>
                         <div class="day-card-stats">
                             <div class="day-stat-row">
-                                <div class="day-stat-label">💧 Rain</div>
-                                <div class="day-stat-value rain">${card.maxPrecipProb}% • ${card.totalRain}"${card.rainTime ? `<span class="day-rain-time">${card.rainTime}</span>` : ''}</div>
+                                <div class="day-stat-label">${card.precipEmoji} ${card.precipType}</div>
+                                <div class="day-stat-value rain">${card.maxPrecipProb}% • ${card.precipAmount}"${card.rainTime ? `<span class="day-rain-time">${card.rainTime}</span>` : ''}</div>
                             </div>
                             <div class="day-stat-row">
                                 <div class="day-stat-label">💨 Wind</div>
