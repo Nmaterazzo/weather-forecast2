@@ -147,129 +147,50 @@
             background-position: center;
         }
 
-        /* Dynamic Background Styles (REPLACEMENT) */
-        .hero-temp {
-            /* ... existing styles for .hero-temp ... */
-            background: linear-gradient(135deg, rgba(74, 144, 226, 0.3) 0%, rgba(52, 73, 94, 0.2) 100%); /* You may remove this line if you want the background to be only the image/weather */
-            /* ... */
-        }
-
-        .hero-temp::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 0;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            filter: grayscale(10%) blur(1px); /* A subtle effect to make the image blend better */
-        }
-        
-        .hero-temp::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.1); /* Dark overlay for text readability */
-            z-index: 0;
-        }
-
-/* * --- NEW DYNAMIC BACKGROUND STYLES (Simulated with gradients) ---
-         * These will be applied as classes to the .hero-temp element via JS.
-         */
-
-        .hero-temp.clear {
-            background-color: #4a90e2; /* Clear/Sunny Day Blue */
-        }
         .hero-temp.clear::before {
-            /* Light Blue Sky + Yellow Sun */
-            background: radial-gradient(circle at 80% 20%, #ffeb3b 10%, #4a90e2 40%, #89cff0 100%);
-            opacity: 1;
-            border-color: #89cff0;
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
         }
 
-        .hero-temp.partly-cloudy {
-            background-color: #6a8ba7; /* Softer Blue/Gray */
+        .hero-temp.sunny::before {
+            background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%);
         }
+
         .hero-temp.partly-cloudy::before {
-            /* Mix of light blue and soft gray clouds */
-            background: linear-gradient(135deg, #a7b9c6 0%, #89cff0 40%, #6a8ba7 100%);
-            opacity: 1;
-            border-color: #a7b9c6;
+            background: linear-gradient(135deg, #3498db 0%, #95a5a6 100%);
         }
 
-        .hero-temp.cloudy, .hero-temp.overcast {
-            background-color: #5c6770; /* Darker Gray for Overcast */
-        }
-        .hero-temp.cloudy::before, .hero-temp.overcast::before {
-            /* Flat gray/cloudy sky */
-            background: linear-gradient(135deg, #7f8c8d 0%, #5c6770 100%);
-            opacity: 1;
-            border-color: #7f8c8d;
+        .hero-temp.cloudy::before {
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
         }
 
-        .hero-temp.rain, .hero-temp.drizzle {
-            background-color: #34495e; /* Stormy Dark Blue/Gray */
-        }
-        .hero-temp.rain::before, .hero-temp.drizzle::before {
-            /* Dark cloud base with subtle rain lines (simple simulation) */
-            background: linear-gradient(180deg, #566573 0%, #2c3e50 100%);
-            opacity: 1;
-            border-color: #566573;
+        .hero-temp.overcast::before {
+            background: linear-gradient(135deg, #34495e 0%, #7f8c8d 100%);
         }
 
-        .hero-temp.thunderstorm {
-            background-color: #1c2833; /* Very Dark Storm */
-        }
-        .hero-temp.thunderstorm::before {
-            /* Deep purple/black for storms */
-            background: linear-gradient(135deg, #2c3e50 0%, #4a196e 100%);
-            opacity: 1;
-            border-color: #2c3e50;
+        .hero-temp.rain::before {
+            background: linear-gradient(135deg, #2980b9 0%, #34495e 100%);
         }
 
-        .hero-temp.snow {
-            background-color: #bdc3c7; /* Light Gray/White for Snow */
+        .hero-temp.drizzle::before {
+            background: linear-gradient(135deg, #5dade2 0%, #85929e 100%);
         }
+
         .hero-temp.snow::before {
-            /* Soft white/blue mix for snowy conditions */
             background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
-            opacity: 1;
-            border-color: #ecf0f1;
         }
 
-        .hero-temp.fog {
-            background-color: #aeb6bf; /* Misty Light Gray */
+        .hero-temp.thunderstorm::before {
+            background: linear-gradient(135deg, #2c3e50 0%, #8e44ad 100%);
         }
+
         .hero-temp.fog::before {
-            /* Flat misty gray */
-            background: linear-gradient(135deg, #bdc3c7 0%, #aeb6bf 100%);
-            opacity: 1;
-            border-color: #bdc3c7;
+            background: linear-gradient(135deg, #95a5a6 0%, #bdc3c7 100%);
         }
 
-        /* * --- TEXT CENTERING FIX ---
-         * Separate the number from the degree symbol to center the condition text correctly.
-         * The degree symbol is now its own element, allowing the main number to be centered.
-         */
         .hero-temp-content {
             position: relative;
             z-index: 1;
-            /* Use flex to align the temp components */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .temp-display {
-            display: flex;
-            align-items: flex-start; /* Align degree symbol to the top right of the number */
-            justify-content: center; /* Center the whole temp display */
+            margin-left: 20px; /* Move entire hero temp content 20px to the right */
         }
 
         .hero-temp-value {
@@ -277,27 +198,16 @@
             font-weight: 200;
             color: #fff;
             line-height: 1;
+            margin-bottom: 10px;
             text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            margin-right: 0px; /* Reset margin from the old rule */
         }
 
-        .degree-symbol {
-            font-size: 60px; /* Smaller, superscript look */
-            font-weight: 200;
-            color: #fff;
-            line-height: 1;
-            margin-top: 10px; /* Raise it slightly */
-        }
-        
         .hero-temp-condition {
             font-size: 24px;
             color: #fff;
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-top: -10px; /* Pull it closer to the number */
             margin-bottom: 5px;
-            text-align: center; /* Ensure this is centered under the *number* */
-            margin-left: -40px; /* Shift 4 pixels to the left */
         }
 
         .hero-temp-feels {
@@ -305,10 +215,7 @@
             color: rgba(255,255,255,0.9);
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            margin-left: -40px; /* Shift 4 pixels to the left */
         }
-
-        /* --- Rest of the existing CSS (omitted for brevity but assumed to be present) --- */
 
         .current-weather {
             background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(52, 73, 94, 0.05) 100%), #1a1a1a;
@@ -988,12 +895,12 @@
 
                 <div class="current-grid">
                     <div class="current-item">
-                        <div class="current-label">Feels Like</div>
-                        <div class="current-value temp" id="feelsLike">--°F</div>
+                        <div class="current-label">Temperature</div>
+                        <div class="current-value temp" id="tempDisplay">--°F</div>
                     </div>
                     <div class="current-item">
-                        <div class="current-label">Precip %</div>
-                        <div class="current-value precip" id="precipProb">--%</div>
+                        <div class="current-label">Feels Like</div>
+                        <div class="current-value temp" id="feelsLike">--°F</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Wind Speed</div>
@@ -1008,12 +915,12 @@
                         <div class="current-value" id="humidity">--%</div>
                     </div>
                     <div class="current-item">
-                        <div class="current-label">Precipitation</div>
-                        <div class="current-value precip" id="precip">-- in</div>
+                        <div class="current-label">Precip %</div>
+                        <div class="current-value precip" id="precipProb">--%</div>
                     </div>
                     <div class="current-item">
-                        <div class="current-label">Pressure</div>
-                        <div class="current-value" id="pressure">-- mb</div>
+                        <div class="current-label">Precipitation</div>
+                        <div class="current-value precip" id="precip">-- in</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
@@ -1339,16 +1246,16 @@
                 const heroTemp = document.getElementById('heroTemp');
                 heroTemp.className = 'hero-temp ' + getWeatherClass(currentCode);
 
-                // Update current conditions (removed temp from display, added precip %)
+                // Update current conditions - reordered with Temperature, without Pressure
                 const currentPrecipProb = Math.round(bestmatch?.data.hourly.precipitation_probability?.[0] || 0);
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
+                document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F`; // Visible in grid
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
-                document.getElementById('precipProb').textContent = `${currentPrecipProb}%`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
                 document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
+                document.getElementById('precipProb').textContent = `${currentPrecipProb}%`;
                 document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
-                document.getElementById('pressure').textContent = `${Math.round(avgPressure)} mb`;
                 document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
 
                 currentForecastData = blended;
@@ -2531,7 +2438,7 @@
                         </div>
                         <div class="day-card-stats">
                             <div class="day-stat-row">
-                                <div class="day-stat-label">💧 Precip</div>
+                                <div class="day-stat-label">💧 Rain</div>
                                 <div class="day-stat-value rain">${card.maxPrecipProb}% • ${card.totalRain}"${card.rainTime ? `<span class="day-rain-time">${card.rainTime}</span>` : ''}</div>
                             </div>
                             <div class="day-stat-row">
