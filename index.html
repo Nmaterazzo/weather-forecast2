@@ -2057,6 +2057,7 @@
         }
 
         function getSunriseSunset(lat, lng, date) {
+            // Use local date components instead of UTC
             const day = date.getDate();
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
@@ -2087,12 +2088,29 @@
             const omega = Math.acos(cosOmega) * 180 / Math.PI;
             const Jrise = Jtransit - omega / 360;
             const Jset = Jtransit + omega / 360;
-            const sunrise = ((Jrise - jdn) * 24 + 12) % 24;
-            const sunset = ((Jset - jdn) * 24 + 12) % 24;
+            
+            // Convert from Julian day fraction to hours
+            let sunrise = ((Jrise - jdn) * 24 + 12) % 24;
+            let sunset = ((Jset - jdn) * 24 + 12) % 24;
+            
+            // Adjust for negative values
+            if (sunrise < 0) sunrise += 24;
+            if (sunset < 0) sunset += 24;
+            
+            // Apply timezone offset to get local time
+            // Get the timezone offset in hours (negative for west of UTC, positive for east)
+            const timezoneOffsetHours = -date.getTimezoneOffset() / 60;
+            
+            sunrise = (sunrise + timezoneOffsetHours) % 24;
+            sunset = (sunset + timezoneOffsetHours) % 24;
+            
+            // Handle wrap-around
+            if (sunrise < 0) sunrise += 24;
+            if (sunset < 0) sunset += 24;
             
             return {
-                sunrise: sunrise < 0 ? sunrise + 24 : sunrise,
-                sunset: sunset < 0 ? sunset + 24 : sunset
+                sunrise: sunrise,
+                sunset: sunset
             };
         }
 
