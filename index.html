@@ -2196,16 +2196,14 @@
                     // Show sunrise time (convert decimal to HH:MM)
                     const sunriseMinutes = Math.round((sunriseHour - Math.floor(sunriseHour)) * 60);
                     const sunriseHourDisplay = Math.floor(sunriseHour);
-                    const sunriseAMPM = sunriseHourDisplay < 12 ? 'AM' : 'PM';
                     const sunriseHour12 = sunriseHourDisplay === 0 ? 12 : sunriseHourDisplay > 12 ? sunriseHourDisplay - 12 : sunriseHourDisplay;
-                    hourLabel = `🌅${sunriseHour12}:${sunriseMinutes.toString().padStart(2, '0')}`;
+                    hourLabel = `${sunriseHour12}:${sunriseMinutes.toString().padStart(2, '0')}`;
                 } else if (isSunsetHour) {
                     // Show sunset time
                     const sunsetMinutes = Math.round((sunsetHour - Math.floor(sunsetHour)) * 60);
                     const sunsetHourDisplay = Math.floor(sunsetHour);
-                    const sunsetAMPM = sunsetHourDisplay < 12 ? 'AM' : 'PM';
                     const sunsetHour12 = sunsetHourDisplay === 0 ? 12 : sunsetHourDisplay > 12 ? sunsetHourDisplay - 12 : sunsetHourDisplay;
-                    hourLabel = `🌇${sunsetHour12}:${sunsetMinutes.toString().padStart(2, '0')}`;
+                    hourLabel = `${sunsetHour12}:${sunsetMinutes.toString().padStart(2, '0')}`;
                 } else {
                     // Regular hour display
                     hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
@@ -2218,15 +2216,26 @@
             html += '<div class="heatmap-label">Conds.</div>';
             for (let hour = 0; hour < 24; hour++) {
                 const idx = hourToIndex[hour];
+                const isPast = hour < currentHour;
+                const isCurrent = hour === currentHour;
+                const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
+                const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
+                const opacity = isDaylight ? 1.0 : 0.75;
+                
+                // Check if this is sunrise or sunset hour (show emoji even without data)
+                const isSunriseHour = hour === Math.floor(sunriseHour);
+                const isSunsetHour = hour === Math.floor(sunsetHour);
+                
                 if (idx !== undefined) {
                     const code = hourlyData.weather_code?.[idx] || 0;
                     const emoji = getWeatherEmoji(code, hour, sunriseHour, sunsetHour);
-                    const isPast = hour < currentHour;
-                    const isCurrent = hour === currentHour;
-                    const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
-                    const cellClass = isCurrent ? 'current' : (isPast ? 'historical' : '');
-                    const opacity = isDaylight ? 1.0 : 0.75;
                     html += `<div class="heatmap-cell condition-cell ${cellClass}" style="opacity: ${opacity};">${emoji}</div>`;
+                } else if (isSunriseHour) {
+                    // No data but it's sunrise hour - show sunrise emoji
+                    html += `<div class="heatmap-cell condition-cell ${cellClass}" style="opacity: ${opacity};">🌅</div>`;
+                } else if (isSunsetHour) {
+                    // No data but it's sunset hour - show sunset emoji
+                    html += `<div class="heatmap-cell condition-cell ${cellClass}" style="opacity: ${opacity};">🌇</div>`;
                 } else {
                     html += '<div class="heatmap-cell condition-cell">--</div>';
                 }
