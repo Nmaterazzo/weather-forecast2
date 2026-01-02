@@ -926,7 +926,7 @@
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 11px;" id="conditions">--</div>
+                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
                 </div>
                 <!-- Hidden temp for heatmap reference -->
@@ -2017,9 +2017,34 @@
             return 0.4 + (normalized * 0.6);
         }
 
-        function getWeatherEmoji(code) {
+        function getWeatherEmoji(code, hour, sunriseHour, sunsetHour) {
+            // Check if we should show night/sunrise/sunset variants
+            const isNight = hour !== undefined && sunriseHour !== undefined && sunsetHour !== undefined && 
+                           (hour < Math.floor(sunriseHour) || hour > Math.floor(sunsetHour));
+            const isSunrise = hour !== undefined && sunriseHour !== undefined && 
+                             hour === Math.floor(sunriseHour);
+            const isSunset = hour !== undefined && sunsetHour !== undefined && 
+                            hour === Math.floor(sunsetHour);
+            
+            // Clear skies - show sunrise/sunset/moon based on time
+            if (code === 0) {
+                if (isSunrise) return '🌅'; // Sunrise
+                if (isSunset) return '🌇'; // Sunset
+                if (isNight) return '🌙'; // Moon at night
+                return '☀️'; // Sun during day
+            }
+            
+            // Mainly clear - show moon at night, sun during day
+            if (code === 1) {
+                if (isSunrise) return '🌅';
+                if (isSunset) return '🌇';
+                if (isNight) return '🌙';
+                return '🌤️';
+            }
+            
+            // All other conditions use standard emojis
             const emojis = {
-                0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+                2: '⛅', 3: '☁️',
                 45: '🌫️', 48: '🌫️',
                 51: '🌦️', 53: '🌦️', 55: '🌧️',
                 61: '🌧️', 63: '🌧️', 65: '🌧️',
@@ -2147,7 +2172,7 @@
                 const idx = hourToIndex[hour];
                 if (idx !== undefined) {
                     const code = hourlyData.weather_code?.[idx] || 0;
-                    const emoji = getWeatherEmoji(code);
+                    const emoji = getWeatherEmoji(code, hour, sunriseHour, sunsetHour);
                     const isPast = hour < currentHour;
                     const isCurrent = hour === currentHour;
                     const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
