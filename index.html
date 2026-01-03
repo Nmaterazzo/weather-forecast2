@@ -1297,190 +1297,132 @@
             }
         }
 
-        function checkRainAlert(hourlyData, ambientData) {
-            if (!hourlyData || !hourlyData.time) return;
+        function checkRainAlert(minutelyData, ambientData) {
+            if (!minutelyData || !minutelyData.time) return;
 
             const now = new Date();
-            const in60mins = new Date(now.getTime() + 60 * 60 * 1000);
+            const in90mins = new Date(now.getTime() + 90 * 60 * 1000); // Show next 90 mins in 15-min intervals
 
             console.log('=== RAIN ALERT CHECK ===');
             console.log('Current time:', now);
-            console.log('Checking next 60 minutes until:', in60mins);
             
-            // Check if rain gauge shows active rain RIGHT NOW
-            if (ambientData && ambientData.hourlyrainin > 0) {
-                console.log('🌧️ RAIN GAUGE ACTIVE! Measured:', ambientData.hourlyrainin, 'inches this hour');
+            // Build header with rain gauge info if available
+            let headerHTML = '';
+            if (ambientData) {
+                const dailyRain = ambientData.dailyrainin || 0;
+                const hourlyRain = ambientData.hourlyrainin || 0;
+                const rainRate = ambientData.rainratein || 0; // Current rain rate in/hr
                 
-                // Build bar chart showing current rain + forecast
-                const forecastBars = [];
-                let cumulativeTotal = ambientData.hourlyrainin; // Start with measured rain
+                console.log('Rain Gauge Data:');
+                console.log('  Daily total:', dailyRain, 'inches');
+                console.log('  This hour:', hourlyRain, 'inches');
+                console.log('  Current rate:', rainRate, 'in/hr');
                 
-                // Add current hour bar with measured data
-                const currentHourTime = new Date(now);
-                currentHourTime.setMinutes(0, 0, 0);
-                
-                forecastBars.push({
-                    time: currentHourTime,
-                    rain: ambientData.hourlyrainin,
-                    snow: 0,
-                    total: ambientData.hourlyrainin,
-                    prob: 100 // It's actually raining!
-                });
-                
-                // Add next 5 hours from forecast
-                for (let i = 0; i < hourlyData.time.length && forecastBars.length < 6; i++) {
-                    const forecastTime = new Date(hourlyData.time[i]);
-                    if (forecastTime > now && forecastTime.getTime() - now.getTime() <= 6 * 60 * 60 * 1000) {
-                        const rain = hourlyData.rain?.[i] || 0;
-                        const snow = hourlyData.snowfall?.[i] || 0;
-                        const prob = hourlyData.precipitation_probability?.[i] || 0;
-                        const total = rain + snow;
-                        
-                        forecastBars.push({
-                            time: forecastTime,
-                            rain,
-                            snow,
-                            total,
-                            prob
-                        });
-                    }
-                }
-                
-                // Show alert with "Raining Now" message
-                const maxPrecip = Math.max(...forecastBars.map(b => b.total), 0.01);
-                let html = '<div class="rain-chart-label">Hourly</div>';
-                
-                forecastBars.forEach(bar => {
-                    const timeStr = bar.time.getTime() === currentHourTime.getTime() ? 'Now' : 
-                                   bar.time.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
-                    const heightPercent = (bar.total / maxPrecip) * 100;
-                    cumulativeTotal = bar.time.getTime() === currentHourTime.getTime() ? bar.total : cumulativeTotal + bar.total;
-                    const barClass = bar.snow > bar.rain ? 'snow' : '';
-                    
-                    html += `
-                        <div class="rain-chart-bar-container">
-                            <div class="rain-chart-time">${timeStr}</div>
-                            <div class="rain-chart-bar">
-                                <div class="rain-bar-fill ${barClass}" style="height: ${heightPercent}%;">
-                                    ${bar.total > 0.01 ? `<div class="rain-bar-amount">${bar.total.toFixed(2)}"</div>` : ''}
+                if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
+                    headerHTML = `
+                        <div style="background: rgba(52, 152, 219, 0.2); padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
+                                <div>
+                                    <div style="color: #999; font-size: 10px;">Today</div>
+                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${dailyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #999; font-size: 10px;">This Hour</div>
+                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${hourlyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #999; font-size: 10px;">Rate</div>
+                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${rainRate.toFixed(2)} in/hr</div>
                                 </div>
                             </div>
-                            <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(2)}"</div>
                         </div>
                     `;
-                });
-                
-                document.getElementById('rainForecastChart').innerHTML = html;
-                document.getElementById('rainForecastEmoji').textContent = '💧';
-                document.getElementById('rainForecastType').textContent = 'Rain';
-                document.getElementById('rainForecastAlert').textContent = 'Raining Now';
-                document.getElementById('rainForecastCard').className = 'rain-forecast-card';
-                document.getElementById('rainForecastSection').classList.add('active');
-                console.log('✅ Showing rain alert (active rain gauge)!');
-                return;
+                }
             }
 
-            // Collect all hours within next 60 minutes
+            // Collect 15-minute intervals for next 90 minutes
             const forecastBars = [];
             let totalRain = 0;
-            let totalSnow = 0;
             let firstPrecipTime = null;
             let hasPrecip = false;
 
-            for (let i = 0; i < hourlyData.time.length && forecastBars.length < 6; i++) {
-                const forecastTime = new Date(hourlyData.time[i]);
+            for (let i = 0; i < minutelyData.time.length; i++) {
+                const forecastTime = new Date(minutelyData.time[i]);
                 
-                // Only check within next ~6 hours for the chart
-                if (forecastTime > now && forecastTime.getTime() - now.getTime() <= 6 * 60 * 60 * 1000) {
-                    const rain = hourlyData.rain?.[i] || 0;
-                    const snow = hourlyData.snowfall?.[i] || 0;
-                    const prob = hourlyData.precipitation_probability?.[i] || 0;
-                    const total = rain + snow;
-
-                    console.log(`Hour ${i}: ${forecastTime.toLocaleString()} - Rain: ${rain}", Snow: ${snow}", Total: ${total}", Prob: ${prob}%`);
+                // Only next 90 minutes (6 bars of 15-min each)
+                if (forecastTime > now && forecastTime <= in90mins && forecastBars.length < 6) {
+                    const precip = minutelyData.precipitation?.[i] || 0;
+                    
+                    console.log(`15-min interval ${i}: ${forecastTime.toLocaleString()} - Precip: ${precip}"`);
 
                     forecastBars.push({
                         time: forecastTime,
-                        rain,
-                        snow,
-                        total,
-                        prob
+                        precip
                     });
 
-                    // Check if significant precipitation in next 60 minutes
-                    if (forecastTime <= in60mins && total > 0) {
-                        console.log('✓ Rain found within 60 mins!');
+                    if (precip > 0) {
                         if (!firstPrecipTime) {
                             firstPrecipTime = forecastTime;
                         }
                         hasPrecip = true;
-                        totalRain += rain;
-                        totalSnow += snow;
+                        totalRain += precip;
                     }
                 }
             }
 
-            console.log('Has precip:', hasPrecip);
-            console.log('Total rain in next 60min:', totalRain);
-            console.log('Total snow in next 60min:', totalSnow);
-
-            if (!hasPrecip || !firstPrecipTime || forecastBars.length === 0) {
-                console.log('❌ No rain alert - conditions not met');
+            console.log('Has precip in forecast:', hasPrecip);
+            console.log('Total rain in next 90min:', totalRain);
+            
+            // Check if rain gauge shows active rain
+            const gaugeActive = ambientData && (ambientData.hourlyrainin > 0 || ambientData.rainratein > 0);
+            
+            if (!hasPrecip && !gaugeActive) {
+                console.log('❌ No rain alert - no forecast precip and no active gauge');
                 document.getElementById('rainForecastSection').classList.remove('active');
                 return;
             }
 
             console.log('✅ Showing rain alert!');
-
-            const minutesUntil = Math.round((firstPrecipTime - now) / (1000 * 60));
             
-            // Determine type
-            let precipType = 'Rain';
-            let precipEmoji = '💧';
-            let cardClass = '';
-            
-            if (totalSnow > 0 && totalRain > 0) {
-                precipType = 'Mixed Precip';
-                precipEmoji = '💧❄️';
-            } else if (totalSnow > 0) {
-                precipType = 'Snow';
-                precipEmoji = '❄️';
-                cardClass = 'snow';
+            // Determine alert message
+            let alertMessage = '';
+            if (gaugeActive) {
+                alertMessage = 'Raining Now';
+            } else if (firstPrecipTime) {
+                const minutesUntil = Math.round((firstPrecipTime - now) / (1000 * 60));
+                alertMessage = minutesUntil === 0 ? 'Starting now' : `in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
             }
 
-            // Update header
-            document.getElementById('rainForecastEmoji').textContent = precipEmoji;
-            document.getElementById('rainForecastType').textContent = precipType;
-            document.getElementById('rainForecastAlert').textContent = 
-                minutesUntil === 0 ? 'Starting now' : `in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
-
-            // Build bar chart
-            const maxPrecip = Math.max(...forecastBars.map(b => b.total), 0.01);
+            // Build 15-minute bar chart
+            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.01);
             let cumulativeTotal = 0;
             
-            let html = '<div class="rain-chart-label">Hourly</div>';
+            let chartHTML = '<div class="rain-chart-label">15-Min</div>';
             
             forecastBars.forEach(bar => {
-                const timeStr = bar.time.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const heightPercent = (bar.total / maxPrecip) * 100;
-                cumulativeTotal += bar.total;
-                const barClass = bar.snow > bar.rain ? 'snow' : '';
+                const minutesFromNow = Math.round((bar.time - now) / (1000 * 60));
+                const timeStr = minutesFromNow < 15 ? 'Now' : `+${minutesFromNow}m`;
+                const heightPercent = (bar.precip / maxPrecip) * 100;
+                cumulativeTotal += bar.precip;
                 
-                html += `
+                chartHTML += `
                     <div class="rain-chart-bar-container">
                         <div class="rain-chart-time">${timeStr}</div>
                         <div class="rain-chart-bar">
-                            <div class="rain-bar-fill ${barClass}" style="height: ${heightPercent}%;">
-                                ${bar.total > 0.01 ? `<div class="rain-bar-amount">${bar.total.toFixed(2)}"</div>` : ''}
+                            <div class="rain-bar-fill" style="height: ${heightPercent}%;">
+                                ${bar.precip > 0.01 ? `<div class="rain-bar-amount">${bar.precip.toFixed(3)}"</div>` : ''}
                             </div>
                         </div>
-                        <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(2)}"</div>
+                        <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(3)}"</div>
                     </div>
                 `;
             });
 
-            document.getElementById('rainForecastChart').innerHTML = html;
-            document.getElementById('rainForecastCard').className = 'rain-forecast-card ' + cardClass;
+            document.getElementById('rainForecastChart').innerHTML = headerHTML + chartHTML;
+            document.getElementById('rainForecastEmoji').textContent = '💧';
+            document.getElementById('rainForecastType').textContent = 'Rain';
+            document.getElementById('rainForecastAlert').textContent = alertMessage;
+            document.getElementById('rainForecastCard').className = 'rain-forecast-card';
             document.getElementById('rainForecastSection').classList.add('active');
         }
 
@@ -1589,6 +1531,9 @@
                     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7&models=best_match`)
                     .then(r => r.json()).then(d => ({type: 'bestmatch', data: d})),
                     
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&minutely_15=precipitation&forecast_days=1&timezone=auto&precipitation_unit=inch`)
+                    .then(r => r.json()).then(d => ({type: 'minutely', data: d})),
+                    
                     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,wind_speed_10m,wind_gusts_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10&models=gfs_seamless`)
                     .then(r => r.json()).then(d => ({type: 'gfs', data: d})),
                     
@@ -1605,6 +1550,7 @@
 
                 const weathergov = validResults.find(r => r.type === 'weathergov');
                 const bestmatch = validResults.find(r => r.type === 'bestmatch');
+                const minutely = validResults.find(r => r.type === 'minutely');
                 const gfs = validResults.find(r => r.type === 'gfs');
                 const ecmwf = validResults.find(r => r.type === 'ecmwf');
 
@@ -1717,8 +1663,8 @@
 
                 currentForecastData = blended;
 
-                // Check for rain/snow in next 60 minutes (pass ambient data for Land O Lakes)
-                checkRainAlert(bestmatch?.data.hourly, ambientData);
+                // Check for rain/snow in next 60 minutes (pass minutely and ambient data)
+                checkRainAlert(minutely?.data.minutely_15, ambientData);
 
                 await fetchHistoricalAndFinish(lat, lng);
 
