@@ -979,7 +979,7 @@
 
         .rain-chart-cumulative {
             font-size: 9px;
-            color: #f39c12;
+            color: #fff;
             font-weight: 600;
             text-align: center;
             margin-top: 2px;
@@ -1284,12 +1284,22 @@
         async function fetchAmbientWeatherData() {
             try {
                 const url = `https://rt.ambientweather.net/v1/devices/${AMBIENT_WEATHER.macAddress}?apiKey=${AMBIENT_WEATHER.apiKey}&applicationKey=${AMBIENT_WEATHER.applicationKey}&limit=1`;
+                console.log('Fetching Ambient Weather data from:', url);
                 const response = await fetch(url);
                 const data = await response.json();
                 
+                console.log('Ambient Weather API response:', data);
+                
                 if (data && data.length > 0 && data[0].lastData) {
+                    console.log('Rain gauge data:', {
+                        daily: data[0].lastData.dailyrainin,
+                        hourly: data[0].lastData.hourlyrainin,
+                        rate: data[0].lastData.rainratein,
+                        timestamp: data[0].lastData.dateutc
+                    });
                     return data[0].lastData;
                 }
+                console.warn('No Ambient Weather data found in response');
                 return null;
             } catch (err) {
                 console.error('Error fetching Ambient Weather data:', err);
@@ -1413,7 +1423,7 @@
                                 ${bar.precip > 0.01 ? `<div class="rain-bar-amount">${bar.precip.toFixed(3)}"</div>` : ''}
                             </div>
                         </div>
-                        <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(3)}"</div>
+                        <div class="rain-chart-cumulative">${cumulativeTotal.toFixed(3)}"</div>
                     </div>
                 `;
             });
