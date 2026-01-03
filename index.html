@@ -843,13 +843,158 @@
             color: #4a90e2;
         }
 
+        .rain-forecast-section {
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .rain-forecast-section.active {
+            display: block;
+        }
+
+        .rain-forecast-card {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%), #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #3498db;
+        }
+
+        .rain-forecast-card.snow {
+            background: linear-gradient(135deg, rgba(155, 89, 182, 0.15) 0%, rgba(142, 68, 173, 0.1) 100%), #1a1a1a;
+            border-color: #9b59b6;
+        }
+
+        .rain-forecast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .rain-forecast-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .rain-forecast-emoji {
+            font-size: 24px;
+        }
+
+        .rain-forecast-alert {
+            font-size: 18px;
+            font-weight: 700;
+            color: #3498db;
+        }
+
+        .rain-forecast-card.snow .rain-forecast-alert {
+            color: #9b59b6;
+        }
+
+        .rain-forecast-close {
+            background: #252525;
+            border: 1px solid #333;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .rain-forecast-close:hover {
+            border-color: #4a90e2;
+            color: #4a90e2;
+        }
+
+        .rain-forecast-chart {
+            display: grid;
+            grid-template-columns: 60px repeat(auto-fit, minmax(40px, 1fr));
+            gap: 4px;
+            margin-top: 15px;
+        }
+
+        .rain-chart-label {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            background: #252525;
+            font-size: 10px;
+            color: #e0e0e0;
+            font-weight: 600;
+            border-radius: 3px;
+        }
+
+        .rain-chart-bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .rain-chart-time {
+            font-size: 9px;
+            color: #999;
+            text-align: center;
+        }
+
+        .rain-chart-bar {
+            width: 100%;
+            height: 80px;
+            background: #252525;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        .rain-bar-fill {
+            width: 100%;
+            background: linear-gradient(to top, #3498db, #5dade2);
+            transition: height 0.3s ease;
+            position: relative;
+        }
+
+        .rain-bar-fill.snow {
+            background: linear-gradient(to top, #9b59b6, #bb8fce);
+        }
+
+        .rain-bar-amount {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #fff;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .rain-chart-cumulative {
+            font-size: 9px;
+            color: #f39c12;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 2px;
+        }
+
         @media (max-width: 768px) {
-            .input-group {
-                grid-template-columns: 1fr;
+            .rain-alert {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
             }
             
-            .current-grid {
-                grid-template-columns: 1fr;
+            .rain-forecast-chart {
+                grid-template-columns: 60px repeat(auto-fit, minmax(35px, 1fr));
             }
         }
     </style>
@@ -881,6 +1026,23 @@
         </div>
 
         <div class="forecast-section" id="forecast">
+            <!-- Rain Forecast Section -->
+            <div class="rain-forecast-section" id="rainForecastSection">
+                <div class="rain-forecast-card" id="rainForecastCard">
+                    <div class="rain-forecast-header">
+                        <div class="rain-forecast-title">
+                            <span class="rain-forecast-emoji" id="rainForecastEmoji">💧</span>
+                            <span id="rainForecastType">Rain</span> Expected
+                            <span class="rain-forecast-alert" id="rainForecastAlert">in -- minutes</span>
+                        </div>
+                        <button class="rain-forecast-close" onclick="closeRainForecast()">Dismiss</button>
+                    </div>
+                    <div class="rain-forecast-chart" id="rainForecastChart">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
             <div class="hero-temp" id="heroTemp">
                 <div class="hero-temp-content">
                     <div class="hero-temp-value" id="heroTempValue">--°</div>
@@ -898,7 +1060,7 @@
                 <div class="current-grid">
                     <div class="current-item">
                         <div class="current-label">Temperature</div>
-                        <div class="current-value temp" style="font-size: 9px;" id="tempDisplay">--°F</div>
+                        <div class="current-value temp" id="tempDisplay">--°F</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Feels Like</div>
@@ -1106,6 +1268,110 @@
         let ridgeCompactMap = null;
         let ridgeCompactLayer = null;
 
+        function closeRainForecast() {
+            document.getElementById('rainForecastSection').classList.remove('active');
+        }
+
+        function checkRainAlert(hourlyData) {
+            if (!hourlyData || !hourlyData.time) return;
+
+            const now = new Date();
+            const in60mins = new Date(now.getTime() + 60 * 60 * 1000);
+
+            // Collect all hours within next 60 minutes
+            const forecastBars = [];
+            let totalRain = 0;
+            let totalSnow = 0;
+            let firstPrecipTime = null;
+            let hasPrecip = false;
+
+            for (let i = 0; i < hourlyData.time.length && forecastBars.length < 6; i++) {
+                const forecastTime = new Date(hourlyData.time[i]);
+                
+                // Only check within next ~6 hours for the chart
+                if (forecastTime > now && forecastTime.getTime() - now.getTime() <= 6 * 60 * 60 * 1000) {
+                    const rain = hourlyData.rain?.[i] || 0;
+                    const snow = hourlyData.snowfall?.[i] || 0;
+                    const prob = hourlyData.precipitation_probability?.[i] || 0;
+                    const total = rain + snow;
+
+                    forecastBars.push({
+                        time: forecastTime,
+                        rain,
+                        snow,
+                        total,
+                        prob
+                    });
+
+                    // Check if significant precipitation in next 60 minutes
+                    if (forecastTime <= in60mins && total > 0 && prob > 30) {
+                        if (!firstPrecipTime) {
+                            firstPrecipTime = forecastTime;
+                        }
+                        hasPrecip = true;
+                        totalRain += rain;
+                        totalSnow += snow;
+                    }
+                }
+            }
+
+            if (!hasPrecip || !firstPrecipTime || forecastBars.length === 0) {
+                document.getElementById('rainForecastSection').classList.remove('active');
+                return;
+            }
+
+            const minutesUntil = Math.round((firstPrecipTime - now) / (1000 * 60));
+            
+            // Determine type
+            let precipType = 'Rain';
+            let precipEmoji = '💧';
+            let cardClass = '';
+            
+            if (totalSnow > 0 && totalRain > 0) {
+                precipType = 'Mixed Precip';
+                precipEmoji = '💧❄️';
+            } else if (totalSnow > 0) {
+                precipType = 'Snow';
+                precipEmoji = '❄️';
+                cardClass = 'snow';
+            }
+
+            // Update header
+            document.getElementById('rainForecastEmoji').textContent = precipEmoji;
+            document.getElementById('rainForecastType').textContent = precipType;
+            document.getElementById('rainForecastAlert').textContent = 
+                minutesUntil === 0 ? 'Starting now' : `in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
+
+            // Build bar chart
+            const maxPrecip = Math.max(...forecastBars.map(b => b.total), 0.01);
+            let cumulativeTotal = 0;
+            
+            let html = '<div class="rain-chart-label">Hourly</div>';
+            
+            forecastBars.forEach(bar => {
+                const timeStr = bar.time.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const heightPercent = (bar.total / maxPrecip) * 100;
+                cumulativeTotal += bar.total;
+                const barClass = bar.snow > bar.rain ? 'snow' : '';
+                
+                html += `
+                    <div class="rain-chart-bar-container">
+                        <div class="rain-chart-time">${timeStr}</div>
+                        <div class="rain-chart-bar">
+                            <div class="rain-bar-fill ${barClass}" style="height: ${heightPercent}%;">
+                                ${bar.total > 0.01 ? `<div class="rain-bar-amount">${bar.total.toFixed(2)}"</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(2)}"</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('rainForecastChart').innerHTML = html;
+            document.getElementById('rainForecastCard').className = 'rain-forecast-card ' + cardClass;
+            document.getElementById('rainForecastSection').classList.add('active');
+        }
+
         function setLocation(lat, lng) {
             getForecast(lat, lng);
         }
@@ -1303,7 +1569,7 @@
                 }
                 
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
-                document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F (High: ${Math.round(todayHigh)}° Low: ${Math.round(todayLow)}°)`; // Visible in grid
+                document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F`; // Visible in grid
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
@@ -1313,6 +1579,9 @@
                 document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
 
                 currentForecastData = blended;
+
+                // Check for rain/snow in next 60 minutes
+                checkRainAlert(bestmatch?.data.hourly);
 
                 await fetchHistoricalAndFinish(lat, lng);
 
