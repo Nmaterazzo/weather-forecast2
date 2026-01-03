@@ -914,9 +914,10 @@
 
         .rain-forecast-chart {
             display: grid;
-            grid-template-columns: 60px repeat(auto-fit, minmax(40px, 1fr));
-            gap: 4px;
+            grid-template-columns: 40px repeat(90, 8px);
+            gap: 1px;
             margin-top: 15px;
+            overflow-x: auto;
         }
 
         .rain-chart-label {
@@ -945,9 +946,9 @@
 
         .rain-chart-bar {
             width: 100%;
-            height: 80px;
+            height: 100px;
             background: #252525;
-            border-radius: 4px;
+            border-radius: 2px;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -1088,7 +1089,7 @@
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
+                        <div class="current-value" style="font-size: 11px;" id="conditions">--</div>
                     </div>
                 </div>
                 <!-- Hidden temp for heatmap reference -->
@@ -1348,19 +1349,20 @@
                 
                 if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
                     headerHTML = `
-                        <div style="background: rgba(52, 152, 219, 0.2); padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;">
+                        <div style="background: rgba(52, 152, 219, 0.25); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(52, 152, 219, 0.4);">
+                            <div style="color: #999; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Rain Gauge Data</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
                                 <div>
-                                    <div style="color: #999; font-size: 10px;">Today</div>
-                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${dailyRain.toFixed(2)}"</div>
+                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Today</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${dailyRain.toFixed(2)}"</div>
                                 </div>
                                 <div>
-                                    <div style="color: #999; font-size: 10px;">This Hour</div>
-                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${hourlyRain.toFixed(2)}"</div>
+                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">This Hour</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${hourlyRain.toFixed(2)}"</div>
                                 </div>
                                 <div>
-                                    <div style="color: #999; font-size: 10px;">Rate</div>
-                                    <div style="color: #3498db; font-weight: 700; font-size: 14px;">${rainRate.toFixed(2)} in/hr</div>
+                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Rate</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${rainRate.toFixed(1)}<span style="font-size: 12px; font-weight: 400; color: #999;"> in/hr</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1421,29 +1423,47 @@
                 alertMessage = minutesUntil === 0 ? 'Starting now' : `in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
             }
 
-            // Build 15-minute bar chart
-            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.01);
+            // Build 90-bar chart (1 bar per minute, using 15-min data repeated)
+            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.01, 0.2); // At least 0.2" scale
             let cumulativeTotal = 0;
             
-            let chartHTML = '<div class="rain-chart-label">15-Min</div>';
+            // Create y-axis labels (0 to 2.0 inches)
+            let chartHTML = '<div class="rain-chart-label" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-right: 5px; font-size: 9px; color: #666;">';
+            for (let i = 20; i >= 0; i -= 2) {
+                const value = (i / 10).toFixed(1);
+                chartHTML += `<div style="height: 4px;">${value}"</div>`;
+            }
+            chartHTML += '</div>';
             
-            forecastBars.forEach(bar => {
-                const minutesFromNow = Math.round((bar.time - now) / (1000 * 60));
-                const timeStr = minutesFromNow < 15 ? 'Now' : `+${minutesFromNow}m`;
-                const heightPercent = (bar.precip / maxPrecip) * 100;
-                cumulativeTotal += bar.precip;
-                
-                chartHTML += `
-                    <div class="rain-chart-bar-container">
-                        <div class="rain-chart-time">${timeStr}</div>
-                        <div class="rain-chart-bar">
-                            <div class="rain-bar-fill" style="height: ${heightPercent}%;">
-                                ${bar.precip > 0.01 ? `<div class="rain-bar-amount">${bar.precip.toFixed(3)}"</div>` : ''}
+            // Create 90 bars (one per minute)
+            forecastBars.forEach((bar, index) => {
+                // Each 15-min bar gets repeated for 15 minutes
+                for (let minute = 0; minute < 15; minute++) {
+                    const totalMinutes = (index * 15) + minute;
+                    if (totalMinutes >= 90) break; // Stop at 90 minutes
+                    
+                    const timeStr = totalMinutes === 0 ? 'Now' : `+${totalMinutes}`;
+                    const heightPercent = Math.min((bar.precip / maxPrecip) * 100, 100);
+                    
+                    // Only update cumulative at the END of each 15-min period
+                    if (minute === 14 || totalMinutes === 89) {
+                        cumulativeTotal += bar.precip;
+                    }
+                    
+                    // Show time label every 15 minutes
+                    const showTime = totalMinutes % 15 === 0;
+                    const showCumulative = totalMinutes % 15 === 14 || totalMinutes === 89;
+                    
+                    chartHTML += `
+                        <div class="rain-chart-bar-container" style="min-width: 8px;">
+                            ${showTime ? `<div class="rain-chart-time" style="font-size: 8px;">${timeStr}</div>` : '<div style="height: 13px;"></div>'}
+                            <div class="rain-chart-bar" style="height: 100px;">
+                                <div class="rain-bar-fill" style="height: ${heightPercent}%;"></div>
                             </div>
+                            ${showCumulative ? `<div class="rain-chart-cumulative" style="font-size: 8px;">${cumulativeTotal.toFixed(3)}"</div>` : '<div style="height: 13px;"></div>'}
                         </div>
-                        <div class="rain-chart-cumulative">${cumulativeTotal.toFixed(3)}"</div>
-                    </div>
-                `;
+                    `;
+                }
             });
 
             document.getElementById('rainForecastChart').innerHTML = headerHTML + chartHTML;
