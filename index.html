@@ -913,11 +913,24 @@
         }
 
         .rain-forecast-chart {
-            display: grid;
-            grid-template-columns: 40px repeat(90, 8px);
-            gap: 1px;
+            display: flex;
+            gap: 0;
             margin-top: 15px;
             overflow-x: auto;
+            align-items: flex-end;
+            padding-bottom: 20px;
+        }
+        
+        .rain-chart-y-axis {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-left: 5px;
+            font-size: 8px;
+            color: #666;
+            height: 100px;
+            order: 999;
+            min-width: 30px;
         }
 
         .rain-chart-label {
@@ -935,25 +948,29 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
+            min-width: 2px;
+            width: 2px;
         }
 
         .rain-chart-time {
-            font-size: 9px;
+            font-size: 8px;
             color: #999;
             text-align: center;
+            white-space: nowrap;
+            height: 12px;
         }
 
         .rain-chart-bar {
             width: 100%;
             height: 100px;
             background: #252525;
-            border-radius: 2px;
+            border-radius: 1px;
             position: relative;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .rain-bar-fill {
@@ -1331,47 +1348,9 @@
             if (!minutelyData || !minutelyData.time) return;
 
             const now = new Date();
-            const in90mins = new Date(now.getTime() + 90 * 60 * 1000); // Show next 90 mins in 15-min intervals
-
-            console.log('=== RAIN ALERT CHECK ===');
-            console.log('Current time:', now);
+            const in90mins = new Date(now.getTime() + 90 * 60 * 1000);
             
-            // Build header with rain gauge info if available
-            let headerHTML = '';
-            if (ambientData) {
-                const dailyRain = ambientData.dailyrainin || 0;
-                const hourlyRain = ambientData.hourlyrainin || 0;
-                const rainRate = ambientData.rainratein || 0; // Current rain rate in/hr
-                
-                console.log('Rain Gauge Data:');
-                console.log('  Daily total:', dailyRain, 'inches');
-                console.log('  This hour:', hourlyRain, 'inches');
-                console.log('  Current rate:', rainRate, 'in/hr');
-                
-                if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
-                    headerHTML = `
-                        <div style="background: rgba(52, 152, 219, 0.25); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(52, 152, 219, 0.4);">
-                            <div style="color: #999; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Rain Gauge Data</div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
-                                <div>
-                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Today</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${dailyRain.toFixed(2)}"</div>
-                                </div>
-                                <div>
-                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">This Hour</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${hourlyRain.toFixed(2)}"</div>
-                                </div>
-                                <div>
-                                    <div style="color: #999; font-size: 11px; margin-bottom: 4px;">Rate</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 20px;">${rainRate.toFixed(1)}<span style="font-size: 12px; font-weight: 400; color: #999;"> in/hr</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            // Collect 15-minute intervals for next 90 minutes
+            // Collect 15-minute intervals
             const forecastBars = [];
             let totalRain = 0;
             let firstPrecipTime = null;
@@ -1379,101 +1358,105 @@
 
             for (let i = 0; i < minutelyData.time.length; i++) {
                 const forecastTime = new Date(minutelyData.time[i]);
-                
-                // Only next 90 minutes (6 bars of 15-min each)
                 if (forecastTime > now && forecastTime <= in90mins && forecastBars.length < 6) {
                     const precip = minutelyData.precipitation?.[i] || 0;
-                    
-                    console.log(`15-min interval ${i}: ${forecastTime.toLocaleString()} - Precip: ${precip}"`);
-
-                    forecastBars.push({
-                        time: forecastTime,
-                        precip
-                    });
-
+                    forecastBars.push({ time: forecastTime, precip });
                     if (precip > 0) {
-                        if (!firstPrecipTime) {
-                            firstPrecipTime = forecastTime;
-                        }
+                        if (!firstPrecipTime) firstPrecipTime = forecastTime;
                         hasPrecip = true;
                         totalRain += precip;
                     }
                 }
             }
-
-            console.log('Has precip in forecast:', hasPrecip);
-            console.log('Total rain in next 90min:', totalRain);
             
-            // Check if rain gauge shows active rain
             const gaugeActive = ambientData && (ambientData.hourlyrainin > 0 || ambientData.rainratein > 0);
             
             if (!hasPrecip && !gaugeActive) {
-                console.log('❌ No rain alert - no forecast precip and no active gauge');
                 document.getElementById('rainForecastSection').classList.remove('active');
                 return;
             }
+            
+            let alertMessage = gaugeActive ? 'Raining Now' : (firstPrecipTime ? `in ${Math.round((firstPrecipTime - now) / 60000)} minutes` : '');
 
-            console.log('✅ Showing rain alert!');
+            // Build HTML
+            let html = '';
             
-            // Determine alert message
-            let alertMessage = '';
-            if (gaugeActive) {
-                alertMessage = 'Raining Now';
-            } else if (firstPrecipTime) {
-                const minutesUntil = Math.round((firstPrecipTime - now) / (1000 * 60));
-                alertMessage = minutesUntil === 0 ? 'Starting now' : `in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
-            }
-
-            // Build 90-bar chart (1 bar per minute, using 15-min data repeated)
-            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.01, 0.2); // At least 0.2" scale
-            let cumulativeTotal = 0;
-            
-            // Create y-axis labels (0 to 2.0 inches)
-            let chartHTML = '<div class="rain-chart-label" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-right: 5px; font-size: 9px; color: #666;">';
-            for (let i = 20; i >= 0; i -= 2) {
-                const value = (i / 10).toFixed(1);
-                chartHTML += `<div style="height: 4px;">${value}"</div>`;
-            }
-            chartHTML += '</div>';
-            
-            // Create 90 bars (one per minute)
-            forecastBars.forEach((bar, index) => {
-                // Each 15-min bar gets repeated for 15 minutes
-                for (let minute = 0; minute < 15; minute++) {
-                    const totalMinutes = (index * 15) + minute;
-                    if (totalMinutes >= 90) break; // Stop at 90 minutes
-                    
-                    const timeStr = totalMinutes === 0 ? 'Now' : `+${totalMinutes}`;
-                    const heightPercent = Math.min((bar.precip / maxPrecip) * 100, 100);
-                    
-                    // Only update cumulative at the END of each 15-min period
-                    if (minute === 14 || totalMinutes === 89) {
-                        cumulativeTotal += bar.precip;
-                    }
-                    
-                    // Show time label every 15 minutes
-                    const showTime = totalMinutes % 15 === 0;
-                    const showCumulative = totalMinutes % 15 === 14 || totalMinutes === 89;
-                    
-                    chartHTML += `
-                        <div class="rain-chart-bar-container" style="min-width: 8px;">
-                            ${showTime ? `<div class="rain-chart-time" style="font-size: 8px;">${timeStr}</div>` : '<div style="height: 13px;"></div>'}
-                            <div class="rain-chart-bar" style="height: 100px;">
-                                <div class="rain-bar-fill" style="height: ${heightPercent}%;"></div>
+            // Rain gauge header
+            if (ambientData) {
+                const dailyRain = ambientData.dailyrainin || 0;
+                const hourlyRain = ambientData.hourlyrainin || 0;
+                const rainRate = ambientData.rainratein || 0;
+                
+                if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
+                    html += `
+                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(52, 152, 219, 0.3);">
+                            <div style="color: #5dade2; font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">⚡ Rain Gauge Data</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center;">
+                                <div>
+                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">Today</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${dailyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">This Hour</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${hourlyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">Rate</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${rainRate.toFixed(1)}<span style="font-size: 11px; font-weight: 400; color: #888; margin-left: 2px;">in/hr</span></div>
+                                </div>
                             </div>
-                            ${showCumulative ? `<div class="rain-chart-cumulative" style="font-size: 8px;">${cumulativeTotal.toFixed(3)}"</div>` : '<div style="height: 13px;"></div>'}
                         </div>
                     `;
                 }
-            });
+            }
 
-            document.getElementById('rainForecastChart').innerHTML = headerHTML + chartHTML;
+            // Chart container
+            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.05);
+            let cumulativeTotal = 0;
+            
+            html += '<div style="display: flex; gap: 8px; overflow-x: auto; padding: 10px 0;"><div style="display: flex; gap: 0; flex: 1;">';
+            
+            // 90 bars
+            forecastBars.forEach((bar, index) => {
+                for (let minute = 0; minute < 15; minute++) {
+                    const totalMinutes = (index * 15) + minute;
+                    if (totalMinutes >= 90) return;
+                    
+                    const heightPercent = Math.min((bar.precip / maxPrecip) * 100, 100);
+                    const showTime = totalMinutes % 15 === 0;
+                    const timeLabel = totalMinutes === 0 ? 'Now' : `+${totalMinutes}`;
+                    
+                    if (minute === 14) cumulativeTotal += bar.precip;
+                    const showCumulative = totalMinutes % 15 === 14;
+                    
+                    html += `<div style="display: flex; flex-direction: column; align-items: center; width: 3px; min-width: 3px;">
+                        <div style="height: 14px; font-size: 7px; color: #666;">${showTime ? timeLabel : ''}</div>
+                        <div style="width: 100%; height: 120px; background: #1a1a1a; border-radius: 1px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <div style="width: 100%; height: ${heightPercent}%; background: linear-gradient(to top, #3498db, #5dade2); border-radius: 1px 1px 0 0;"></div>
+                        </div>
+                        <div style="height: 12px; font-size: 7px; color: #fff; margin-top: 2px;">${showCumulative ? cumulativeTotal.toFixed(3) + '"' : ''}</div>
+                    </div>`;
+                }
+            });
+            
+            html += '</div>';
+            
+            // Y-axis on right
+            html += '<div style="display: flex; flex-direction: column; justify-content: space-between; padding-left: 8px; min-width: 35px; height: 120px; margin-top: 14px;">';
+            for (let i = 10; i >= 0; i--) {
+                const value = (maxPrecip * i / 10).toFixed(2);
+                html += `<div style="font-size: 8px; color: #666; text-align: left;">${value}"</div>`;
+            }
+            html += '</div></div>';
+
+            document.getElementById('rainForecastChart').innerHTML = html;
             document.getElementById('rainForecastEmoji').textContent = '💧';
             document.getElementById('rainForecastType').textContent = 'Rain';
             document.getElementById('rainForecastAlert').textContent = alertMessage;
             document.getElementById('rainForecastCard').className = 'rain-forecast-card';
             document.getElementById('rainForecastSection').classList.add('active');
         }
+
 
         function setLocation(lat, lng) {
             getForecast(lat, lng);
