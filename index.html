@@ -1089,7 +1089,7 @@
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 11px;" id="conditions">--</div>
+                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
                 </div>
                 <!-- Hidden temp for heatmap reference -->
@@ -1268,6 +1268,7 @@
         let currentFrameIndex = 0;
         let ridgeCompactMap = null;
         let ridgeCompactLayer = null;
+        let currentAmbientData = null; // Store ambient weather data globally
         
         // Ambient Weather API credentials
         const AMBIENT_WEATHER = {
@@ -1557,6 +1558,7 @@
                     ambientData = await fetchAmbientWeatherData();
                     if (ambientData) {
                         console.log('Using Ambient Weather station data for Land O\' Lakes:', ambientData);
+                        currentAmbientData = ambientData; // Store globally
                     }
                 }
                 
@@ -2803,7 +2805,10 @@
                 const idx = hourToIndex[hour];
                 if (idx !== undefined) {
                     let precipAmt;
-                    if (hour === currentHour && currentConditions.precip !== null) {
+                    // Use rain gauge data for current hour if available
+                    if (hour === currentHour && currentAmbientData && currentAmbientData.hourlyrainin !== undefined) {
+                        precipAmt = currentAmbientData.hourlyrainin;
+                    } else if (hour === currentHour && currentConditions.precip !== null) {
                         precipAmt = currentConditions.precip;
                     } else if (hour < currentHour && historicalMap[hour] !== undefined) {
                         const histIdx = historicalMap[hour];
@@ -2933,7 +2938,11 @@
                 let precipType = 'Rain';
                 let precipAmount = totalRain.toFixed(2);
                 
-                if (totalRain > 0 && totalSnow > 0) {
+                // For TODAY only, use rain gauge data if available
+                if (dayOffset === 0 && currentAmbientData && currentAmbientData.dailyrainin !== undefined) {
+                    precipAmount = currentAmbientData.dailyrainin.toFixed(2);
+                    precipType = 'Rain (Gauge)';
+                } else if (totalRain > 0 && totalSnow > 0) {
                     // Mixed precipitation
                     precipEmoji = '💧❄️';
                     precipType = 'Mix';
