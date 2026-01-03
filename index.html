@@ -926,7 +926,7 @@
                     </div>
                     <div class="current-item">
                         <div class="current-label">Conditions</div>
-                        <div class="current-value" style="font-size: 11px;" id="conditions">--</div>
+                        <div class="current-value" style="font-size: 18px;" id="conditions">--</div>
                     </div>
                 </div>
                 <!-- Hidden temp for heatmap reference -->
@@ -1262,15 +1262,32 @@
                 heroTemp.className = 'hero-temp ' + getWeatherClass(currentCode);
 
                 // Update current conditions - reordered with Temperature, without Pressure
-                const currentPrecipProb = Math.round(bestmatch?.data.hourly.precipitation_probability?.[0] || 0);
+                // Find the next hour index in forecast data
+                const now = new Date();
+                const nextHour = new Date(now);
+                nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+                
+                let nextHourPrecipProb = 0;
+                let nextHourPrecipAmount = 0;
+                
+                if (bestmatch?.data?.hourly) {
+                    const nextHourIndex = bestmatch.data.hourly.time.findIndex(t => new Date(t) >= nextHour);
+                    if (nextHourIndex >= 0) {
+                        nextHourPrecipProb = Math.round(bestmatch.data.hourly.precipitation_probability?.[nextHourIndex] || 0);
+                        const nextHourRain = bestmatch.data.hourly.rain?.[nextHourIndex] || 0;
+                        const nextHourSnow = bestmatch.data.hourly.snowfall?.[nextHourIndex] || 0;
+                        nextHourPrecipAmount = nextHourRain + nextHourSnow;
+                    }
+                }
+                
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
                 document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F`; // Visible in grid
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
                 document.getElementById('humidity').textContent = `${Math.round(avgHumidity)}%`;
-                document.getElementById('precipProb').textContent = `${currentPrecipProb}%`;
-                document.getElementById('precip').textContent = `${avgPrecip.toFixed(2)} in`;
+                document.getElementById('precipProb').textContent = `${nextHourPrecipProb}%`;
+                document.getElementById('precip').textContent = `${nextHourPrecipAmount.toFixed(2)} in`;
                 document.getElementById('conditions').textContent = getWeatherDescription(omModels[0].weather_code);
 
                 currentForecastData = blended;
@@ -2327,7 +2344,18 @@
             for (let hour = 0; hour < 24; hour++) {
                 const idx = hourToIndex[hour];
                 if (idx !== undefined) {
-                    const prob = Math.round(hourlyData.precipitation_probability?.[idx] || 0);
+                    let prob;
+                    // For past hours, check if it actually rained (historical data)
+                    if (hour < currentHour && historicalMap[hour] !== undefined) {
+                        const histIdx = historicalMap[hour];
+                        const actualRain = (currentHistoricalData.hourly.rain?.[histIdx] || 0) + 
+                                          (currentHistoricalData.hourly.snowfall?.[histIdx] || 0);
+                        // If it actually rained/snowed, show 100%, otherwise 0%
+                        prob = actualRain > 0 ? 100 : 0;
+                    } else {
+                        prob = Math.round(hourlyData.precipitation_probability?.[idx] || 0);
+                    }
+                    
                     const baseOpacity = Math.max(0.05, prob / 100);
                     const isDaylight = hour >= Math.floor(sunriseHour) && hour <= Math.floor(sunsetHour);
                     const opacity = isDaylight ? baseOpacity : baseOpacity * 0.75;
