@@ -898,7 +898,7 @@
                 <div class="current-grid">
                     <div class="current-item">
                         <div class="current-label">Temperature</div>
-                        <div class="current-value temp" id="tempDisplay">--°F</div>
+                        <div class="current-value temp" style="font-size: 9px;" id="tempDisplay">--°F</div>
                     </div>
                     <div class="current-item">
                         <div class="current-label">Feels Like</div>
@@ -1252,6 +1252,29 @@
                 const currentCode = omModels[0].weather_code;
                 const conditionText = getWeatherDescription(currentCode);
 
+                // Get today's high/low from blended hourly data
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const tomorrowStart = new Date(todayStart);
+                tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+                
+                let todayHigh = avgTemp;
+                let todayLow = avgTemp;
+                
+                if (blended && blended.time) {
+                    const todayTemps = [];
+                    for (let i = 0; i < blended.time.length; i++) {
+                        const time = new Date(blended.time[i]);
+                        if (time >= todayStart && time < tomorrowStart) {
+                            todayTemps.push(blended.temperature_2m[i]);
+                        }
+                    }
+                    if (todayTemps.length > 0) {
+                        todayHigh = Math.max(...todayTemps);
+                        todayLow = Math.min(...todayTemps);
+                    }
+                }
+
                 // Update hero temp section
                 document.getElementById('heroTempValue').textContent = `${Math.round(avgTemp)}°`;
                 document.getElementById('heroCondition').textContent = conditionText;
@@ -1263,7 +1286,6 @@
 
                 // Update current conditions - reordered with Temperature, without Pressure
                 // Find the next hour index in forecast data
-                const now = new Date();
                 const nextHour = new Date(now);
                 nextHour.setHours(now.getHours() + 1, 0, 0, 0);
                 
@@ -1281,7 +1303,7 @@
                 }
                 
                 document.getElementById('temp').textContent = `${Math.round(avgTemp)}°F`; // Hidden element for heatmap
-                document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F`; // Visible in grid
+                document.getElementById('tempDisplay').textContent = `${Math.round(avgTemp)}°F (High: ${Math.round(todayHigh)}° Low: ${Math.round(todayLow)}°)`; // Visible in grid
                 document.getElementById('feelsLike').textContent = `${Math.round(avgFeels)}°F`;
                 document.getElementById('wind').textContent = `${Math.round(avgWind)} mph`;
                 document.getElementById('windGusts').textContent = `${Math.round(avgGusts)} mph`;
