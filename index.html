@@ -1014,7 +1014,7 @@
             </div>
 
             <div class="preset-locations">
-                <button class="preset-btn" onclick="setLocation(28.2189, -82.4526)">Land O' Lakes, FL</button>
+                <button class="preset-btn" onclick="setLocation(28.1975, -82.4441)">Land O' Lakes, FL</button>
                 <button class="preset-btn" onclick="setLocation(27.9506, -82.4572)">Tampa, FL</button>
             </div>
         </div>
@@ -1273,8 +1273,8 @@
             apiKey: 'e69bc01ace6e448d9dc47471ee49520bd2d77c740fa44c5faaa64727f50515c1',
             applicationKey: '6c3da7cd61eb4102a36fc7fba93b16694edeb3c17cb54bd49bb3e42f465e8a2c',
             macAddress: 'C8:C9:A3:0E:CB:E2',
-            landOLakesLat: 28.2189,
-            landOLakesLng: -82.4526
+            landOLakesLat: 28.1975,
+            landOLakesLng: -82.4441
         };
 
         function closeRainForecast() {
@@ -1297,7 +1297,7 @@
             }
         }
 
-        function checkRainAlert(hourlyData) {
+        function checkRainAlert(hourlyData, ambientData) {
             if (!hourlyData || !hourlyData.time) return;
 
             const now = new Date();
@@ -1306,6 +1306,79 @@
             console.log('=== RAIN ALERT CHECK ===');
             console.log('Current time:', now);
             console.log('Checking next 60 minutes until:', in60mins);
+            
+            // Check if rain gauge shows active rain RIGHT NOW
+            if (ambientData && ambientData.hourlyrainin > 0) {
+                console.log('🌧️ RAIN GAUGE ACTIVE! Measured:', ambientData.hourlyrainin, 'inches this hour');
+                
+                // Build bar chart showing current rain + forecast
+                const forecastBars = [];
+                let cumulativeTotal = ambientData.hourlyrainin; // Start with measured rain
+                
+                // Add current hour bar with measured data
+                const currentHourTime = new Date(now);
+                currentHourTime.setMinutes(0, 0, 0);
+                
+                forecastBars.push({
+                    time: currentHourTime,
+                    rain: ambientData.hourlyrainin,
+                    snow: 0,
+                    total: ambientData.hourlyrainin,
+                    prob: 100 // It's actually raining!
+                });
+                
+                // Add next 5 hours from forecast
+                for (let i = 0; i < hourlyData.time.length && forecastBars.length < 6; i++) {
+                    const forecastTime = new Date(hourlyData.time[i]);
+                    if (forecastTime > now && forecastTime.getTime() - now.getTime() <= 6 * 60 * 60 * 1000) {
+                        const rain = hourlyData.rain?.[i] || 0;
+                        const snow = hourlyData.snowfall?.[i] || 0;
+                        const prob = hourlyData.precipitation_probability?.[i] || 0;
+                        const total = rain + snow;
+                        
+                        forecastBars.push({
+                            time: forecastTime,
+                            rain,
+                            snow,
+                            total,
+                            prob
+                        });
+                    }
+                }
+                
+                // Show alert with "Raining Now" message
+                const maxPrecip = Math.max(...forecastBars.map(b => b.total), 0.01);
+                let html = '<div class="rain-chart-label">Hourly</div>';
+                
+                forecastBars.forEach(bar => {
+                    const timeStr = bar.time.getTime() === currentHourTime.getTime() ? 'Now' : 
+                                   bar.time.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    const heightPercent = (bar.total / maxPrecip) * 100;
+                    cumulativeTotal = bar.time.getTime() === currentHourTime.getTime() ? bar.total : cumulativeTotal + bar.total;
+                    const barClass = bar.snow > bar.rain ? 'snow' : '';
+                    
+                    html += `
+                        <div class="rain-chart-bar-container">
+                            <div class="rain-chart-time">${timeStr}</div>
+                            <div class="rain-chart-bar">
+                                <div class="rain-bar-fill ${barClass}" style="height: ${heightPercent}%;">
+                                    ${bar.total > 0.01 ? `<div class="rain-bar-amount">${bar.total.toFixed(2)}"</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="rain-chart-cumulative">Σ ${cumulativeTotal.toFixed(2)}"</div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('rainForecastChart').innerHTML = html;
+                document.getElementById('rainForecastEmoji').textContent = '💧';
+                document.getElementById('rainForecastType').textContent = 'Rain';
+                document.getElementById('rainForecastAlert').textContent = 'Raining Now';
+                document.getElementById('rainForecastCard').className = 'rain-forecast-card';
+                document.getElementById('rainForecastSection').classList.add('active');
+                console.log('✅ Showing rain alert (active rain gauge)!');
+                return;
+            }
 
             // Collect all hours within next 60 minutes
             const forecastBars = [];
@@ -1485,9 +1558,9 @@
                 currentLatLng = { lat, lng };
                 const isUS = (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66);
                 
-                // Check if this is Land O' Lakes location (within 0.01 degrees)
-                const isLandOLakes = Math.abs(lat - AMBIENT_WEATHER.landOLakesLat) < 0.01 && 
-                                     Math.abs(lng - AMBIENT_WEATHER.landOLakesLng) < 0.01;
+                // Check if this is Land O' Lakes location (within 0.02 degrees ~ 1.4 miles)
+                const isLandOLakes = Math.abs(lat - AMBIENT_WEATHER.landOLakesLat) < 0.02 && 
+                                     Math.abs(lng - AMBIENT_WEATHER.landOLakesLng) < 0.02;
                 
                 let ambientData = null;
                 if (isLandOLakes) {
@@ -1644,8 +1717,8 @@
 
                 currentForecastData = blended;
 
-                // Check for rain/snow in next 60 minutes
-                checkRainAlert(bestmatch?.data.hourly);
+                // Check for rain/snow in next 60 minutes (pass ambient data for Land O Lakes)
+                checkRainAlert(bestmatch?.data.hourly, ambientData);
 
                 await fetchHistoricalAndFinish(lat, lng);
 
@@ -3040,7 +3113,7 @@
             }
         };
 
-        window.addEventListener('load', () => getForecast(28.2189, -82.4526));
+        window.addEventListener('load', () => getForecast(28.1975, -82.4441));
     </script>
 <script>
   if ('serviceWorker' in navigator) {
