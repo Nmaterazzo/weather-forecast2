@@ -1323,6 +1323,7 @@
                             rate: data[0].lastData.rainratein,
                             timestamp: data[0].lastData.dateutc
                         });
+                        logHourlyRainData(data[0].lastData);
                         return data[0].lastData;
                     } else if (data[0].dailyrainin !== undefined) {
                         // Data might be directly in the first item
@@ -1332,6 +1333,7 @@
                             rate: data[0].rainratein,
                             timestamp: data[0].dateutc
                         });
+                        logHourlyRainData(data[0]);
                         return data[0];
                     }
                 }
@@ -1343,6 +1345,62 @@
                 return null;
             }
         }
+        
+        function logHourlyRainData(gaugeData) {
+            if (!gaugeData || gaugeData.hourlyrainin === undefined) return;
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            // Get stored rain log
+            let rainLog = {};
+            try {
+                const stored = localStorage.getItem('rainGaugeLog');
+                if (stored) rainLog = JSON.parse(stored);
+            } catch (e) {
+                console.error('Error reading rain log:', e);
+            }
+            
+            // Initialize today if needed
+            if (!rainLog[today]) {
+                rainLog[today] = {};
+            }
+            
+            // Log this hour's rain
+            rainLog[today][currentHour] = {
+                rain: gaugeData.hourlyrainin,
+                timestamp: now.toISOString()
+            };
+            
+            // Clean up old data (keep last 7 days only)
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+            Object.keys(rainLog).forEach(date => {
+                if (date < cutoffDate) {
+                    delete rainLog[date];
+                }
+            });
+            
+            // Save back to localStorage
+            try {
+                localStorage.setItem('rainGaugeLog', JSON.stringify(rainLog));
+                console.log('Logged rain for hour', currentHour, ':', gaugeData.hourlyrainin, 'inches');
+            } catch (e) {
+                console.error('Error saving rain log:', e);
+            }
+        }
+        
+        function getLoggedRainForHour(hour) {
+            try {
+                const rainLog = JSON.parse(localStorage.getItem('rainGaugeLog') || '{}');
+                const today = new Date().toISOString().split('T')[0];
+                return rainLog[today]?.[hour]?.rain || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
 
         function checkRainAlert(minutelyData, ambientData) {
             if (!minutelyData || !minutelyData.time) return;
@@ -1380,38 +1438,9 @@
 
             // Build HTML
             let html = '';
-            
-            // Rain gauge header
-            if (ambientData) {
-                const dailyRain = ambientData.dailyrainin || 0;
-                const hourlyRain = ambientData.hourlyrainin || 0;
-                const rainRate = ambientData.rainratein || 0;
-                
-                if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
-                    html += `
-                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(52, 152, 219, 0.3);">
-                            <div style="color: #5dade2; font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">⚡ Rain Gauge Data</div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center;">
-                                <div>
-                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">Today</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${dailyRain.toFixed(2)}"</div>
-                                </div>
-                                <div>
-                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">This Hour</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${hourlyRain.toFixed(2)}"</div>
-                                </div>
-                                <div>
-                                    <div style="color: #888; font-size: 10px; margin-bottom: 6px; text-transform: uppercase;">Rate</div>
-                                    <div style="color: #5dade2; font-weight: 700; font-size: 24px;">${rainRate.toFixed(1)}<span style="font-size: 11px; font-weight: 400; color: #888; margin-left: 2px;">in/hr</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
 
-            // Chart container
-            const maxPrecip = Math.max(...forecastBars.map(b => b.precip), 0.05);
+            // Chart container first (cumulative y-axis)
+            const maxCumulative = forecastBars.reduce((sum, b) => sum + b.precip, 0);
             let cumulativeTotal = 0;
             
             html += '<div style="display: flex; gap: 8px; overflow-x: auto; padding: 10px 0;"><div style="display: flex; gap: 0; flex: 1;">';
@@ -1422,32 +1451,61 @@
                     const totalMinutes = (index * 15) + minute;
                     if (totalMinutes >= 90) return;
                     
-                    const heightPercent = Math.min((bar.precip / maxPrecip) * 100, 100);
+                    // Add to cumulative at END of each 15-min period
+                    if (minute === 14) cumulativeTotal += bar.precip;
+                    
+                    const heightPercent = maxCumulative > 0 ? Math.min((cumulativeTotal / maxCumulative) * 100, 100) : 0;
                     const showTime = totalMinutes % 15 === 0;
                     const timeLabel = totalMinutes === 0 ? 'Now' : `+${totalMinutes}`;
-                    
-                    if (minute === 14) cumulativeTotal += bar.precip;
                     const showCumulative = totalMinutes % 15 === 14;
                     
                     html += `<div style="display: flex; flex-direction: column; align-items: center; width: 3px; min-width: 3px;">
-                        <div style="height: 14px; font-size: 7px; color: #666;">${showTime ? timeLabel : ''}</div>
-                        <div style="width: 100%; height: 120px; background: #1a1a1a; border-radius: 1px; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div style="height: 10px; font-size: 6px; color: #666;">${showTime ? timeLabel : ''}</div>
+                        <div style="width: 100%; height: 60px; background: #1a1a1a; border-radius: 1px; display: flex; flex-direction: column; justify-content: flex-end;">
                             <div style="width: 100%; height: ${heightPercent}%; background: linear-gradient(to top, #3498db, #5dade2); border-radius: 1px 1px 0 0;"></div>
                         </div>
-                        <div style="height: 12px; font-size: 7px; color: #fff; margin-top: 2px;">${showCumulative ? cumulativeTotal.toFixed(3) + '"' : ''}</div>
+                        <div style="height: 10px; font-size: 6px; color: #fff; margin-top: 1px;">${showCumulative ? cumulativeTotal.toFixed(3) + '"' : ''}</div>
                     </div>`;
                 }
             });
             
             html += '</div>';
             
-            // Y-axis on right
-            html += '<div style="display: flex; flex-direction: column; justify-content: space-between; padding-left: 8px; min-width: 35px; height: 120px; margin-top: 14px;">';
+            // Y-axis on right (cumulative scale)
+            html += '<div style="display: flex; flex-direction: column; justify-content: space-between; padding-left: 8px; min-width: 30px; height: 60px; margin-top: 10px;">';
             for (let i = 10; i >= 0; i--) {
-                const value = (maxPrecip * i / 10).toFixed(2);
-                html += `<div style="font-size: 8px; color: #666; text-align: left;">${value}"</div>`;
+                const value = (maxCumulative * i / 10).toFixed(2);
+                html += `<div style="font-size: 7px; color: #666; text-align: left;">${value}"</div>`;
             }
             html += '</div></div>';
+            
+            // Rain gauge badge below chart
+            if (ambientData) {
+                const dailyRain = ambientData.dailyrainin || 0;
+                const hourlyRain = ambientData.hourlyrainin || 0;
+                const rainRate = ambientData.rainratein || 0;
+                
+                if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
+                    html += `
+                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%); padding: 8px 12px; border-radius: 6px; margin-top: 10px; border: 1px solid rgba(52, 152, 219, 0.3);">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: center;">
+                                <div>
+                                    <div style="color: #888; font-size: 7px; margin-bottom: 2px; text-transform: uppercase;">Today</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 11px;">${dailyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #888; font-size: 7px; margin-bottom: 2px; text-transform: uppercase;">This Hour</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 11px;">${hourlyRain.toFixed(2)}"</div>
+                                </div>
+                                <div>
+                                    <div style="color: #888; font-size: 7px; margin-bottom: 2px; text-transform: uppercase;">Rate</div>
+                                    <div style="color: #5dade2; font-weight: 700; font-size: 11px;">${rainRate.toFixed(1)}<span style="font-size: 7px; font-weight: 400; color: #888;"> in/hr</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
 
             document.getElementById('rainForecastChart').innerHTML = html;
             document.getElementById('rainForecastEmoji').textContent = '💧';
@@ -2793,10 +2851,18 @@
                         precipAmt = currentAmbientData.hourlyrainin;
                     } else if (hour === currentHour && currentConditions.precip !== null) {
                         precipAmt = currentConditions.precip;
-                    } else if (hour < currentHour && historicalMap[hour] !== undefined) {
-                        const histIdx = historicalMap[hour];
-                        precipAmt = (currentHistoricalData.hourly.rain?.[histIdx] || 0) + 
-                                   (currentHistoricalData.hourly.snowfall?.[histIdx] || 0);
+                    } else if (hour < currentHour) {
+                        // For past hours, try logged gauge data first, then historical API
+                        const loggedRain = getLoggedRainForHour(hour);
+                        if (loggedRain !== null) {
+                            precipAmt = loggedRain;
+                        } else if (historicalMap[hour] !== undefined) {
+                            const histIdx = historicalMap[hour];
+                            precipAmt = (currentHistoricalData.hourly.rain?.[histIdx] || 0) + 
+                                       (currentHistoricalData.hourly.snowfall?.[histIdx] || 0);
+                        } else {
+                            precipAmt = 0;
+                        }
                     } else {
                         precipAmt = (hourlyData.rain?.[idx] || 0) + (hourlyData.snowfall?.[idx] || 0);
                     }
