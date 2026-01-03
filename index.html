@@ -1434,7 +1434,7 @@
                 return;
             }
             
-            let alertMessage = gaugeActive ? 'Raining Now' : (firstPrecipTime ? `in ${Math.round((firstPrecipTime - now) / 60000)} minutes` : '');
+            let alertMessage = gaugeActive ? 'Now' : (firstPrecipTime ? `in ${Math.round((firstPrecipTime - now) / 60000)} minutes` : '');
 
             // Build HTML
             let html = '';
