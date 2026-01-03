@@ -1329,7 +1329,7 @@
                     });
 
                     // Check if significant precipitation in next 60 minutes
-                    if (forecastTime <= in60mins && total > 0 && prob > 30) {
+                    if (forecastTime <= in60mins && total > 0) {
                         if (!firstPrecipTime) {
                             firstPrecipTime = forecastTime;
                         }
@@ -1545,33 +1545,16 @@
 
                 const omModels = [bestmatch, gfs, ecmwf].filter(m => m).map(r => r.data.current);
                 
-                // Use Ambient Weather data if available (Land O' Lakes), otherwise use model averages
-                let avgTemp, avgFeels, avgWind, avgGusts, avgHumidity, avgPrecip, currentCode;
+                // Use model averages for everything
+                const avgTemp = omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
+                const avgFeels = omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
+                const avgWind = omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
+                const avgGusts = omModels.reduce((s, d) => s + (d.wind_gusts_10m || 0), 0) / omModels.length;
+                const avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
+                const avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
+                const currentCode = omModels[0].weather_code;
                 
-                if (ambientData) {
-                    // Use actual measured data from your weather station
-                    avgTemp = ambientData.tempf || omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
-                    avgFeels = ambientData.feelsLike || omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
-                    avgWind = ambientData.windspeedmph || omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
-                    avgGusts = ambientData.windgustmph || omModels.reduce((s, d) => s + (d.wind_gusts_10m || 0), 0) / omModels.length;
-                    avgHumidity = ambientData.humidity || omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
-                    avgPrecip = ambientData.hourlyrainin || 0; // Actual measured rain this hour
-                    currentCode = omModels[0].weather_code; // Still use model for weather code
-                    
-                    // Update model run text to show it's using station data
-                    document.getElementById('modelRun').textContent = `Station Data: ${new Date(ambientData.dateutc).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-                } else {
-                    // Use model averages
-                    avgTemp = omModels.reduce((s, d) => s + d.temperature_2m, 0) / omModels.length;
-                    avgFeels = omModels.reduce((s, d) => s + (d.apparent_temperature || 0), 0) / omModels.length;
-                    avgWind = omModels.reduce((s, d) => s + d.wind_speed_10m, 0) / omModels.length;
-                    avgGusts = omModels.reduce((s, d) => s + (d.wind_gusts_10m || 0), 0) / omModels.length;
-                    avgHumidity = omModels.reduce((s, d) => s + d.relative_humidity_2m, 0) / omModels.length;
-                    avgPrecip = omModels.reduce((s, d) => s + (d.precipitation || 0), 0) / omModels.length;
-                    currentCode = omModels[0].weather_code;
-                    
-                    document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
-                }
+                document.getElementById('modelRun').textContent = `Updated: ${new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'})}`;
                 
                 const conditionText = getWeatherDescription(currentCode);
 
