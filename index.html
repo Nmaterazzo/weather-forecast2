@@ -1476,8 +1476,8 @@
             
             // Y-axis on right (cumulative scale)
             html += '<div style="display: flex; flex-direction: column; justify-content: space-between; padding-left: 8px; min-width: 30px; height: 60px; margin-top: 10px;">';
-            for (let i = 10; i >= 0; i--) {
-                const value = (maxCumulative * i / 10).toFixed(1);
+            for (let i = 5; i >= 0; i--) {
+                const value = (maxCumulative * i / 5).toFixed(2);
                 html += `<div style="font-size: 7px; color: #666; text-align: left;">${value}"</div>`;
             }
             html += '</div></div>'; // Close chart container
