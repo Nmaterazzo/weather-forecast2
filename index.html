@@ -1439,11 +1439,14 @@
             // Build HTML
             let html = '';
 
-            // Chart container first (cumulative y-axis)
+            // Outer wrapper - flex column so badge goes below
+            html += '<div style="display: flex; flex-direction: column; gap: 10px;">';
+
+            // Chart container
             const maxCumulative = forecastBars.reduce((sum, b) => sum + b.precip, 0);
             let cumulativeTotal = 0;
             
-            html += '<div style="display: flex; gap: 8px; overflow-x: auto; padding: 10px 0;"><div style="display: flex; gap: 0; flex: 1;">';
+            html += '<div style="display: flex; gap: 8px; overflow-x: auto;"><div style="display: flex; gap: 0; flex: 1;">';
             
             // 90 bars
             forecastBars.forEach((bar, index) => {
@@ -1477,9 +1480,9 @@
                 const value = (maxCumulative * i / 10).toFixed(2);
                 html += `<div style="font-size: 7px; color: #666; text-align: left;">${value}"</div>`;
             }
-            html += '</div></div>';
+            html += '</div></div>'; // Close chart container
             
-            // Rain gauge badge below chart
+            // Rain gauge badge below chart (full width of outer container)
             if (ambientData) {
                 const dailyRain = ambientData.dailyrainin || 0;
                 const hourlyRain = ambientData.hourlyrainin || 0;
@@ -1487,7 +1490,7 @@
                 
                 if (dailyRain > 0 || hourlyRain > 0 || rainRate > 0) {
                     html += `
-                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%); padding: 8px 12px; border-radius: 6px; margin-top: 10px; border: 1px solid rgba(52, 152, 219, 0.3);">
+                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(52, 152, 219, 0.3);">
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: center;">
                                 <div>
                                     <div style="color: #888; font-size: 7px; margin-bottom: 2px; text-transform: uppercase;">Today</div>
@@ -1506,6 +1509,8 @@
                     `;
                 }
             }
+            
+            html += '</div>'; // Close outer wrapper
 
             document.getElementById('rainForecastChart').innerHTML = html;
             document.getElementById('rainForecastEmoji').textContent = '💧';
@@ -2854,12 +2859,15 @@
                     } else if (hour < currentHour) {
                         // For past hours, try logged gauge data first, then historical API
                         const loggedRain = getLoggedRainForHour(hour);
+                        console.log(`Hour ${hour}: logged rain = ${loggedRain}`);
                         if (loggedRain !== null) {
                             precipAmt = loggedRain;
+                            console.log(`Using logged rain for hour ${hour}: ${precipAmt}"`);
                         } else if (historicalMap[hour] !== undefined) {
                             const histIdx = historicalMap[hour];
                             precipAmt = (currentHistoricalData.hourly.rain?.[histIdx] || 0) + 
                                        (currentHistoricalData.hourly.snowfall?.[histIdx] || 0);
+                            console.log(`Using historical API for hour ${hour}: ${precipAmt}"`);
                         } else {
                             precipAmt = 0;
                         }
