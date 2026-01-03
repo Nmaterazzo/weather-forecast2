@@ -1303,6 +1303,10 @@
             const now = new Date();
             const in60mins = new Date(now.getTime() + 60 * 60 * 1000);
 
+            console.log('=== RAIN ALERT CHECK ===');
+            console.log('Current time:', now);
+            console.log('Checking next 60 minutes until:', in60mins);
+
             // Collect all hours within next 60 minutes
             const forecastBars = [];
             let totalRain = 0;
@@ -1320,6 +1324,8 @@
                     const prob = hourlyData.precipitation_probability?.[i] || 0;
                     const total = rain + snow;
 
+                    console.log(`Hour ${i}: ${forecastTime.toLocaleString()} - Rain: ${rain}", Snow: ${snow}", Total: ${total}", Prob: ${prob}%`);
+
                     forecastBars.push({
                         time: forecastTime,
                         rain,
@@ -1330,6 +1336,7 @@
 
                     // Check if significant precipitation in next 60 minutes
                     if (forecastTime <= in60mins && total > 0) {
+                        console.log('✓ Rain found within 60 mins!');
                         if (!firstPrecipTime) {
                             firstPrecipTime = forecastTime;
                         }
@@ -1340,10 +1347,17 @@
                 }
             }
 
+            console.log('Has precip:', hasPrecip);
+            console.log('Total rain in next 60min:', totalRain);
+            console.log('Total snow in next 60min:', totalSnow);
+
             if (!hasPrecip || !firstPrecipTime || forecastBars.length === 0) {
+                console.log('❌ No rain alert - conditions not met');
                 document.getElementById('rainForecastSection').classList.remove('active');
                 return;
             }
+
+            console.log('✅ Showing rain alert!');
 
             const minutesUntil = Math.round((firstPrecipTime - now) / (1000 * 60));
             
