@@ -259,6 +259,35 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 }
 .h-pop-fill{height:100%;background:var(--rain-col);border-radius:2px}
 .h-wind{font-size:8px;color:var(--dim);margin-top:4px}
+.h-uv{font-size:9px;color:var(--yellow);margin-top:3px;letter-spacing:0.5px}
+.h-sr-col{background:linear-gradient(180deg,rgba(255,183,77,0.18) 0%,rgba(255,183,77,0.04) 100%)!important}
+.h-ss-col{background:linear-gradient(180deg,rgba(251,146,60,0.18) 0%,rgba(251,146,60,0.04) 100%)!important}
+.h-sr-label{font-size:8px;color:#fbbf24;font-weight:600;letter-spacing:0.5px;margin-bottom:2px}
+.h-ss-label{font-size:8px;color:#fb923c;font-weight:600;letter-spacing:0.5px;margin-bottom:2px}
+/* Sun times card */
+.sun-card{margin:0 16px 16px;background:var(--glass);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.sun-card-hdr{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;cursor:pointer;transition:background 0.15s}
+.sun-card-hdr:hover{background:var(--glass2)}
+.sun-hdr-left{display:flex;align-items:center;gap:12px}
+.sun-today{display:flex;gap:20px}
+.sun-today-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;letter-spacing:1px}
+.sun-today-time{font-family:'DM Mono',monospace;font-size:14px}
+.sun-expand-body{border-top:1px solid var(--border);padding:12px 16px;display:none}
+.sun-expand-body.open{display:block}
+.sun-7day{display:flex;flex-direction:column;gap:4px}
+.sun-row{display:grid;grid-template-columns:80px 1fr 1fr 60px;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,0.02);border-radius:8px}
+.sun-row-day{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--text)}
+.sun-row-time{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:12px;color:var(--mid)}
+.sun-row-daylen{font-size:10px;color:var(--dim);text-align:right;letter-spacing:0.5px}
+/* Today outlook card */
+.outlook-card{margin:0 16px 16px;background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:16px;position:relative;overflow:hidden}
+.outlook-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2),#818cf8)}
+.outlook-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.outlook-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--dim)}
+.outlook-badge{font-size:8px;letter-spacing:2px;padding:2px 8px;border-radius:10px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);color:var(--accent)}
+.outlook-text{font-size:14px;line-height:1.7;color:var(--mid);font-weight:300;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.3px}
+.outlook-loading{color:var(--dim);font-size:12px;letter-spacing:1px;animation:pulse2 1.5s infinite}
+@keyframes pulse2{0%,100%{opacity:0.5}50%{opacity:1}}
 
 /* ── GAUGE STRIP ── */
 .gauge-strip{
@@ -584,6 +613,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
     </div>
   </div>
 
+  <!-- TODAY'S OUTLOOK -->
+  <div class="sec-hdr"><div class="sec-title">Today's Outlook</div><div class="sec-line"></div></div>
+  <div class="outlook-card">
+    <div class="outlook-hdr">
+      <div class="outlook-title">AI Weather Summary</div>
+      <div class="outlook-badge">NWS STYLE</div>
+    </div>
+    <div class="outlook-text" id="outlookText"><span class="outlook-loading">Generating forecast summary…</span></div>
+  </div>
+
+  <!-- SUN TIMES -->
+  <div class="sec-hdr"><div class="sec-title">Sun · Rise &amp; Set</div><div class="sec-line"></div></div>
+  <div class="sun-card">
+    <div class="sun-card-hdr" onclick="toggleSunTimes()">
+      <div class="sun-hdr-left">
+        <div class="sun-today" id="sunTodayDisplay">
+          <div class="sun-today-item"><span>🌅</span><span class="sun-today-time" id="sunriseToday">—</span></div>
+          <div class="sun-today-item"><span>🌇</span><span class="sun-today-time" id="sunsetToday">—</span></div>
+          <div class="sun-today-item" style="color:var(--dim);font-size:12px"><span>☀️</span><span id="daylightToday">— hrs</span></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--dim);letter-spacing:1px" id="sunToggleBtn">7 DAYS ↓</div>
+    </div>
+    <div class="sun-expand-body" id="sunExpandBody">
+      <div class="sun-7day" id="sun7dayGrid"></div>
+    </div>
+  </div>
+
   <!-- GAUGE STRIP -->
   <div class="sec-hdr"><div class="sec-title">Conditions</div><div class="sec-line"></div></div>
   <div class="gauge-strip">
@@ -664,17 +721,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
   </div>
 
   <!-- HEATMAP -->
-  <div class="sec-hdr"><div class="sec-title">Today — Hourly Grid</div><div class="sec-line"></div></div>
-  <div class="heatmap-card">
-    <div class="heatmap-hdr">
-      <div class="hm-title">Temperature · Precip · Wind</div>
-      <button class="hm-toggle" id="expandBtn" onclick="toggleHeatmapExpand()">EXPAND</button>
-    </div>
-    <div class="heatmap-scroll">
-      <div class="heatmap" id="heatmapGrid"></div>
-    </div>
-  </div>
-
   <!-- HISTORICAL -->
   <div class="sec-hdr"><div class="sec-title">Past 24 Hours · Observed</div><div class="sec-line"></div></div>
   <div class="hist-card">
@@ -973,6 +1019,8 @@ async function getForecast(lat,lng){
   buildCompass(windDeg,Math.round(avgWind),Math.round(avgGusts));
   buildPrecipChart(blended);
   build10Day(blended,ambientData);
+  buildSunTimes(lat,lng);
+  buildOutlook(blended,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,currentCode,lat,lng);
   buildHeatmap(blended);
 
   setLoad(95,'Loading radar…');
@@ -1123,9 +1171,15 @@ function buildHourlyStrip(data,now){
   let sunRise=6,sunSet=20;
   if(currentLatLng){const st=getSunriseSunset(currentLatLng.lat,currentLatLng.lng,now);if(st.sunrise!==null){sunRise=st.sunrise;sunSet=st.sunset;}}
 
+  // Build hourly columns — insert virtual SR/SS slots at exact decimal hour
+  // We'll render SR/SS as special columns between real hours
+  const srHour=Math.floor(sunRise),ssHour=Math.floor(sunSet);
+  const srMin=Math.round((sunRise-srHour)*60),ssMin=Math.round((sunSet-ssHour)*60);
+  const srTimeStr=`${srHour===0?12:srHour>12?srHour-12:srHour}:${srMin.toString().padStart(2,'0')} ${srHour<12?'AM':'PM'}`;
+  const ssTimeStr=`${ssHour===0?12:ssHour>12?ssHour-12:ssHour}:${ssMin.toString().padStart(2,'0')} ${ssHour<12?'AM':'PM'}`;
+
   const W=64*indices.length;
   let html=`<svg class="hourly-svg-wrap" id="hourlySvg" viewBox="0 0 ${W} 80" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:${W}px;height:80px;pointer-events:none">`;
-  // Temp curve
   let pts=indices.map((di,xi)=>{
     const t=data.temperature_2m[di];
     const y=70-((t-minT)/rangeT)*50;
@@ -1137,43 +1191,59 @@ function buildHourlyStrip(data,now){
     const px=pts[i-1],cx_=(pts[i][0]+px[0])/2;
     pathD+=` C${cx_},${px[1]} ${cx_},${pts[i][1]} ${pts[i][0]},${pts[i][1]}`;
   }
-  // Gradient fill under curve
   html+=`<defs><linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.25"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.01"/></linearGradient></defs>`;
   const fillD=pathD+` L${pts[pts.length-1][0]},80 L${pts[0][0]},80 Z`;
   html+=`<path d="${fillD}" fill="url(#tempGrad)"/>`;
   html+=`<path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>`;
-  // Dots at each point
-  pts.forEach(([x,y],xi)=>{
-    const t=Math.round(data.temperature_2m[indices[xi]]);
-    html+=`<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)" opacity="0.8"/>`;
-  });
+  pts.forEach(([x,y])=>{html+=`<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)" opacity="0.8"/>`;});
   html+=`</svg>`;
 
-  // Columns
   indices.forEach((di,xi)=>{
     const t=new Date(data.time[di]);
     const hr=t.getHours();
     const isNow=xi===0;
+    const isSR=hr===srHour;
+    const isSS=hr===ssHour;
     const timeStr=hr===0?'12 AM':hr<12?`${hr} AM`:hr===12?'12 PM':`${hr-12} PM`;
     const temp=Math.round(data.temperature_2m[di]);
     const feels=Math.round(data.apparent_temperature?.[di]||data.temperature_2m[di]);
     const pop=Math.round(data.precipitation_probability?.[di]||0);
     const wind=Math.round(data.wind_speed_10m[di]);
+    const uv=Math.round(data.uv_index?.[di]||0);
     const code=data.weather_code?.[di]||0;
-    const emoji=getEmoji(code,hr,sunRise,sunSet);
-    html+=`<div class="hourly-col${isNow?' now':''}" title="${timeStr}: ${temp}°F, ${getDesc(code)}, ${pop}% precip, ${wind}mph wind">
+
+    // For SR/SS hours: override emoji and show exact time
+    let emoji,extraLabel='';
+    if(isSR&&!isNow){
+      emoji='🌅';
+      extraLabel=`<div class="h-sr-label">↑ ${srTimeStr}</div>`;
+    }else if(isSS&&!isNow){
+      emoji='🌇';
+      extraLabel=`<div class="h-ss-label">↓ ${ssTimeStr}</div>`;
+    }else{
+      emoji=getEmoji(code,hr,sunRise,sunSet);
+    }
+
+    // UV color
+    const uvColor=uv<=2?'var(--green)':uv<=5?'var(--yellow)':uv<=7?'var(--warm)':uv<=10?'var(--red)':'#c084fc';
+    const uvLabel=uv<=2?'Low':uv<=5?'Mod':uv<=7?'High':uv<=10?'V.Hi':'Ext';
+
+    const colClass=`hourly-col${isNow?' now':''}${isSR&&!isNow?' h-sr-col':''}${isSS&&!isNow?' h-ss-col':''}`;
+
+    html+=`<div class="${colClass}" title="${timeStr}: ${temp}°F, ${getDesc(code)}, ${pop}% precip, ${wind}mph wind, UV ${uv}">
       <div class="h-time${isNow?' now-label':''}">${isNow?'NOW':timeStr}</div>
+      ${extraLabel}
       <div class="h-icon">${emoji}</div>
       <div class="h-temp">${temp}°</div>
       <div class="h-feels">Feels ${feels}°</div>
       ${pop>0?`<div class="h-pop">💧 ${pop}%<div class="h-pop-bar"><div class="h-pop-fill" style="width:${pop}%"></div></div></div>`:'<div class="h-pop" style="opacity:0.3">0%</div>'}
       <div class="h-wind">${wind} mph</div>
+      ${hr>=Math.floor(sunRise)&&hr<=Math.floor(sunSet)&&uv>0?`<div class="h-uv" style="color:${uvColor}">☀ UV ${uv}</div>`:''}
     </div>`;
   });
 
   track.innerHTML=html;
 
-  // Drag scroll
   const sc=document.getElementById('hourlyScroll');
   let isDown=false,startX,scrollL;
   sc.addEventListener('mousedown',e=>{isDown=true;startX=e.pageX-sc.offsetLeft;scrollL=sc.scrollLeft;});
@@ -1308,7 +1378,8 @@ function build10Day(data,ambientData){
     const barLeft=((day.lo-absLo)/range)*100;
     const barRight=((absHi-day.hi)/range)*100;
     const hiCol=getTempColor(day.hi),loCol=getTempColor(day.lo);
-    const precipStr=day.snow>0?`❄️ ${day.snow.toFixed(2)}"`:day.rain>0.005?`💧 ${day.rain.toFixed(2)}"`:day.pop>20?`${Math.round(day.pop)}%`:'—';
+    const isGaugeDay=day.d===0&&ambientData?.dailyrainin!==undefined;
+    const precipStr=isGaugeDay?`💧 ${day.rain.toFixed(2)}" (gauge)`:day.snow>0?`❄️ ${day.snow.toFixed(2)}"`:day.rain>0.005?`💧 ${day.rain.toFixed(2)}"`:day.pop>20?`${Math.round(day.pop)}%`:"—";
     html+=`
       <div class="day-row${day.d===0?' today':''}" onclick="toggleDayDetail('detail_${idx}',${JSON.stringify(day.di).replace(/"/g,"'")})">
         <div class="dr-name">${day.d===0?'TODAY':day.d===1?'TMRW':day.dname.slice(0,3).toUpperCase()}<br><span style="font-size:9px;color:var(--dim);font-weight:300">${day.dshort}</span></div>
@@ -1660,6 +1731,94 @@ function playRadarAnimation(){
   radarAnimTimer=setInterval(()=>{currentFrameIdx=(currentFrameIdx+1)%radarFrames.length;document.getElementById('radarSlider').value=currentFrameIdx;updateRadarFrame(currentFrameIdx);},500);
 }
 function pauseRadarAnimation(){if(radarAnimTimer){clearInterval(radarAnimTimer);radarAnimTimer=null;}}
+
+// ── SUN TIMES ──
+function buildSunTimes(lat,lng){
+  const now=new Date();
+  const fmtTime=h=>{
+    const hr=Math.floor(h),mn=Math.round((h-hr)*60);
+    const mn2=mn>=60?0:mn,hr2=mn>=60?hr+1:hr;
+    const h12=hr2===0?12:hr2>12?hr2-12:hr2;
+    const ampm=hr2<12?'AM':'PM';
+    return`${h12}:${mn2.toString().padStart(2,'0')} ${ampm}`;
+  };
+  const dayLen=h=>{const hrs=Math.floor(h),mins=Math.round((h-hrs)*60);return`${hrs}h ${mins}m`;};
+  let todaySR=null,todaySS=null;
+  let html='';
+  for(let d=0;d<7;d++){
+    const date=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    date.setDate(date.getDate()+d);
+    const st=getSunriseSunset(lat,lng,date);
+    if(!st||st.sunrise===null)continue;
+    const dl=st.sunset-st.sunrise;
+    const dname=d===0?'TODAY':d===1?'TOMORROW':date.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase();
+    const dateStr=date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if(d===0){todaySR=st.sunrise;todaySS=st.sunset;}
+    html+=`<div class="sun-row">
+      <div class="sun-row-day">${dname}<br><span style="font-size:9px;color:var(--dim);font-weight:300">${dateStr}</span></div>
+      <div class="sun-row-time">🌅 <span>${fmtTime(st.sunrise)}</span></div>
+      <div class="sun-row-time">🌇 <span>${fmtTime(st.sunset)}</span></div>
+      <div class="sun-row-daylen">${dayLen(dl)}</div>
+    </div>`;
+  }
+  document.getElementById('sun7dayGrid').innerHTML=html;
+  if(todaySR!==null){
+    document.getElementById('sunriseToday').textContent=fmtTime(todaySR);
+    document.getElementById('sunsetToday').textContent=fmtTime(todaySS);
+    const dl=todaySS-todaySR;
+    const hrs=Math.floor(dl),mins=Math.round((dl-hrs)*60);
+    document.getElementById('daylightToday').textContent=`${hrs}h ${mins}m`;
+  }
+}
+
+function toggleSunTimes(){
+  const body=document.getElementById('sunExpandBody');
+  const btn=document.getElementById('sunToggleBtn');
+  if(body.classList.contains('open')){body.classList.remove('open');btn.textContent='7 DAYS ↓';}
+  else{body.classList.add('open');btn.textContent='CLOSE ↑';}
+}
+
+// ── TODAY'S OUTLOOK (NWS-style summary) ──
+async function buildOutlook(data,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,code,lat,lng){
+  const el=document.getElementById('outlookText');
+  if(!el)return;
+  const now=new Date();
+  const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const tomorrowStart=new Date(todayStart);tomorrowStart.setDate(tomorrowStart.getDate()+1);
+  // Gather today's data
+  const todayIdx=[];
+  for(let i=0;i<data.time.length;i++){const t=new Date(data.time[i]);if(t>=todayStart&&t<tomorrowStart)todayIdx.push(i);}
+  const hiTemp=Math.max(...todayIdx.map(i=>data.temperature_2m[i]));
+  const loTemp=Math.min(...todayIdx.map(i=>data.temperature_2m[i]));
+  const maxPop=Math.max(...todayIdx.map(i=>data.precipitation_probability?.[i]||0));
+  const totalRain=todayIdx.reduce((s,i)=>s+(data.rain?.[i]||0),0);
+  const maxWind=Math.max(...todayIdx.map(i=>data.wind_gusts_10m?.[i]||0));
+  const st=getSunriseSunset(lat,lng,now);
+  const fmtH=h=>{const hr=Math.floor(h),mn=Math.round((h-hr)*60),h12=hr===0?12:hr>12?hr-12:hr,ap=hr<12?'AM':'PM';return`${h12}:${mn.toString().padStart(2,'0')} ${ap}`;};
+  const srStr=st.sunrise?fmtH(st.sunrise):'—';
+  const ssStr=st.sunset?fmtH(st.sunset):'—';
+  const prompt=`Write a 2-3 sentence NWS-style weather forecast for today only. Be specific and conversational, like a meteorologist talking to locals. Use this data: Current conditions: ${getDesc(code)}, ${Math.round(avgTemp)}°F (feels like ${Math.round(avgFeels)}°F). Today's high: ${Math.round(hiTemp)}°F, low: ${Math.round(loTemp)}°F. Humidity: ${Math.round(avgHumidity)}%. Wind: ${Math.round(avgWind)} mph with gusts to ${Math.round(avgGusts)} mph. Chance of rain: ${Math.round(maxPop)}%${totalRain>0.01?`, expected accumulation ${totalRain.toFixed(2)}"`:''}.  Max wind gusts: ${Math.round(maxWind)} mph. Sunrise: ${srStr}, Sunset: ${ssStr}. Location is near Tampa, FL. Do not use bullet points. No preamble. Just the forecast text.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:200,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const d=await resp.json();
+    const text=d.content?.[0]?.text||'Forecast unavailable.';
+    el.textContent=text;
+  }catch(e){
+    // Fallback: write it ourselves from the data
+    const condStr=getDesc(code).toLowerCase();
+    const rainStr=maxPop>60?`Rain is likely${totalRain>0.05?` with up to ${totalRain.toFixed(2)}" expected`:''}. `:'';
+    const windStr=maxWind>25?`Gusty winds up to ${Math.round(maxWind)} mph possible. `:'';
+    el.textContent=`${condStr.charAt(0).toUpperCase()+condStr.slice(1)} skies today with a high near ${Math.round(hiTemp)}°F. ${rainStr}${windStr}Humidity around ${Math.round(avgHumidity)}%. Sunrise at ${srStr}, sunset at ${ssStr}.`;
+  }
+}
 
 // ── RAIN ALERT ──
 function checkRainAlert(min,amb){
