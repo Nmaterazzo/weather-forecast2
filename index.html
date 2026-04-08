@@ -1027,10 +1027,12 @@ function buildHourlyStrip(data,now){
   const track=document.getElementById('hourlyTrack');
   const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const limit=new Date(todayStart);limit.setDate(limit.getDate()+2);
+  // Include current hour so NOW card shows current hour, not next one
+  const nowHour=new Date(now.getFullYear(),now.getMonth(),now.getDate(),now.getHours());
   let indices=[];
   for(let i=0;i<data.time.length;i++){
     const t=new Date(data.time[i]);
-    if(t>=now&&t<limit)indices.push(i);
+    if(t>=nowHour&&t<limit)indices.push(i);
     if(indices.length>=36)break;
   }
   if(!indices.length)return;
@@ -1618,118 +1620,104 @@ function buildOutlook(data,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,code,la
 function checkRainAlert(min,amb){
   const section=document.getElementById('rainForecastSection');
   if(!min||!min.time){section.style.display='none';return;}
-
   const now=new Date(),in90=new Date(now.getTime()+90*60000);
   const minuteData=[];
   for(let i=0;i<min.time.length;i++){
     const t=new Date(min.time[i]);
     if(t>=now&&t<=in90)minuteData.push({t,precip:min.precipitation?.[i]||0,mins:Math.round((t-now)/60000)});
   }
-
   const hasPrecip=minuteData.some(d=>d.precip>0);
   const gActive=amb&&(amb.hourlyrainin>0||amb.rainratein>0);
   if(!hasPrecip&&!gActive){section.style.display='none';return;}
-
   const firstRain=minuteData.find(d=>d.precip>0);
-  const alertMsg=gActive?'Raining now':(firstRain?`In ${firstRain.mins} min`:'Nearby');
-  const maxP=Math.max(...minuteData.map(d=>d.precip),0.0001);
-
-  // Gauge badge HTML if ambient data available
+  const alertMsg=gActive?'Raining now':(firstRain?`Rain in ${firstRain.mins} min`:'Nearby');
   let gaugeBadge='';
   if(amb){
     const dr=amb.dailyrainin||0,hr=amb.hourlyrainin||0,rr=amb.rainratein||0;
     if(dr>0||hr>0||rr>0){
-      gaugeBadge=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid rgba(59,130,246,0.15)">
-        <div style="text-align:center"><div style="font-size:7px;color:var(--dim);letter-spacing:1px;margin-bottom:3px">TODAY</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1">${dr.toFixed(2)}"</div></div>
-        <div style="text-align:center"><div style="font-size:7px;color:var(--dim);letter-spacing:1px;margin-bottom:3px">THIS HOUR</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1">${hr.toFixed(2)}"</div></div>
-        <div style="text-align:center"><div style="font-size:7px;color:var(--dim);letter-spacing:1px;margin-bottom:3px">RATE</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1">${rr.toFixed(1)}<span style="font-size:9px;color:var(--dim)">"∕hr</span></div></div>
+      gaugeBadge=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid rgba(255,255,255,0.06);margin-top:10px;padding-top:10px">
+        <div style="text-align:center"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">TODAY</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${dr.toFixed(2)}"</div></div>
+        <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06);border-right:1px solid rgba(255,255,255,0.06)"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">THIS HOUR</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${hr.toFixed(2)}"</div></div>
+        <div style="text-align:center"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">RATE</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${rr.toFixed(1)}<span style="font-size:10px;color:var(--dim)">"∕hr</span></div></div>
       </div>`;
     }
   }
-
   section.innerHTML=`
-    <div style="background:linear-gradient(135deg,rgba(29,78,216,0.15),rgba(8,13,22,0.95));border:1px solid rgba(59,130,246,0.3);border-radius:14px;padding:14px;border-left:3px solid var(--rain-col);margin-bottom:4px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:20px">🌧️</span>
+    <div style="background:rgba(8,13,22,0.95);border:1px solid rgba(59,130,246,0.25);border-radius:14px;padding:14px;margin-bottom:4px;overflow:hidden;position:relative">
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(29,78,216,0.12),transparent 60%);pointer-events:none"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:relative">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--rain-col);box-shadow:0 0 8px rgba(59,130,246,0.8);animation:pulse 1.5s infinite"></div>
           <div>
-            <div style="font-size:13px;font-weight:700;letter-spacing:1px;color:#fff">RAIN INCOMING</div>
-            <div style="font-size:11px;color:var(--rain-col);letter-spacing:1px">${alertMsg}</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:#fff">RAIN INCOMING</div>
+            <div style="font-size:11px;color:rgba(96,165,250,0.9);letter-spacing:1px;margin-top:1px">${alertMsg.toUpperCase()}</div>
           </div>
         </div>
-        <button onclick="closeRainForecast()" style="background:none;border:1px solid var(--border);color:var(--dim);font-size:9px;padding:4px 10px;border-radius:6px;cursor:pointer;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:600">DISMISS</button>
+        <button onclick="closeRainForecast()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:10px;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:600">DISMISS</button>
       </div>
-      <canvas id="rainAlertCanvas" style="display:block;width:100%;border-radius:6px"></canvas>
+      <canvas id="rainAlertCanvas" style="display:block;width:100%"></canvas>
       ${gaugeBadge}
     </div>`;
-
   section.style.display='block';
-
-  // Draw Apple-style rain chart on canvas
   requestAnimationFrame(()=>{
     const canvas=document.getElementById('rainAlertCanvas');
-    if(!canvas)return;
+    if(!canvas||!minuteData.length)return;
     const dpr=window.devicePixelRatio||1;
     const W=Math.max(canvas.parentElement.clientWidth-28,280);
-    const H=80;
+    const H=72;
     canvas.width=W*dpr;canvas.height=H*dpr;
     canvas.style.width=W+'px';canvas.style.height=H+'px';
     const c=canvas.getContext('2d');
     c.scale(dpr,dpr);
-
-    const n=minuteData.length||1;
-    const padL=0,padR=0,padT=8,padB=18;
+    const n=minuteData.length;
+    const padL=4,padR=4,padT=6,padB=22;
     const cW=W-padL-padR,cH=H-padT-padB;
-    const xOf=i=>(i/(n-1||1))*cW+padL;
-
-    // Background
-    c.fillStyle='rgba(255,255,255,0.02)';
-    c.roundRect(0,0,W,H,6);c.fill();
-
-    // Time labels
-    c.fillStyle='rgba(255,255,255,0.25)';
-    c.font=`${9}px DM Mono`;c.textAlign='center';
-    minuteData.forEach((d,i)=>{
-      if(d.mins%15!==0)return;
-      const lbl=d.mins===0?'Now':`+${d.mins}`;
-      c.fillText(lbl,xOf(i),H-3);
-    });
-
-    // Rain intensity bars
-    minuteData.forEach((d,i)=>{
-      if(d.precip<=0)return;
-      const bH=(d.precip/maxP)*cH*0.85;
-      const x=xOf(i);
-      const bW=Math.max(cW/n-1,1.5);
-      const intensity=d.precip/maxP;
-      const alpha=0.3+intensity*0.55;
-      c.fillStyle=`rgba(59,130,246,${alpha})`;
-      c.beginPath();
-      c.roundRect(x-bW/2,padT+cH-bH,bW,bH,1);
-      c.fill();
-    });
-
-    // Smooth probability curve overlay
-    const pPts=minuteData.map((d,i)=>[xOf(i),padT+cH-((d.precip/maxP)*cH*0.85)]);
-    if(pPts.length>1){
-      // Gradient stroke
-      const lineGrad=c.createLinearGradient(0,0,W,0);
-      lineGrad.addColorStop(0,'rgba(56,189,248,0.0)');
-      lineGrad.addColorStop(0.1,'rgba(56,189,248,0.9)');
-      lineGrad.addColorStop(0.9,'rgba(56,189,248,0.9)');
-      lineGrad.addColorStop(1,'rgba(56,189,248,0.0)');
-      c.beginPath();
-      c.moveTo(pPts[0][0],pPts[0][1]);
-      for(let i=1;i<pPts.length;i++){
-        const cpx=(pPts[i-1][0]+pPts[i][0])/2;
-        c.bezierCurveTo(cpx,pPts[i-1][1],cpx,pPts[i][1],pPts[i][0],pPts[i][1]);
-      }
-      c.strokeStyle=lineGrad;c.lineWidth=1.5;
-      c.stroke();
+    const maxP=Math.max(...minuteData.map(d=>d.precip),0.0001);
+    const xOf=i=>padL+(i/(n-1||1))*cW;
+    const yOf=p=>padT+cH-(Math.min(p/maxP,1)*cH);
+    // Points: zeros sit at baseline
+    const pts=minuteData.map((d,i)=>[xOf(i), d.precip>0 ? yOf(d.precip) : padT+cH]);
+    // Gradient fill
+    const fillGrad=c.createLinearGradient(0,padT,0,padT+cH);
+    fillGrad.addColorStop(0,'rgba(59,130,246,0.5)');
+    fillGrad.addColorStop(0.6,'rgba(59,130,246,0.15)');
+    fillGrad.addColorStop(1,'rgba(59,130,246,0.0)');
+    c.beginPath();
+    c.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++){
+      const cpx=(pts[i-1][0]+pts[i][0])/2;
+      c.bezierCurveTo(cpx,pts[i-1][1],cpx,pts[i][1],pts[i][0],pts[i][1]);
     }
-
-    // NOW marker line
-    c.strokeStyle='rgba(255,255,255,0.2)';c.lineWidth=1;c.setLineDash([2,3]);
+    c.lineTo(pts[n-1][0],padT+cH);
+    c.lineTo(pts[0][0],padT+cH);
+    c.closePath();
+    c.fillStyle=fillGrad;c.fill();
+    // Glowing line
+    c.beginPath();
+    c.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++){
+      const cpx=(pts[i-1][0]+pts[i][0])/2;
+      c.bezierCurveTo(cpx,pts[i-1][1],cpx,pts[i][1],pts[i][0],pts[i][1]);
+    }
+    const lineGrad=c.createLinearGradient(0,0,W,0);
+    lineGrad.addColorStop(0,'rgba(96,165,250,0.2)');
+    lineGrad.addColorStop(0.1,'rgba(96,165,250,1)');
+    lineGrad.addColorStop(0.9,'rgba(96,165,250,1)');
+    lineGrad.addColorStop(1,'rgba(96,165,250,0.2)');
+    c.strokeStyle=lineGrad;c.lineWidth=2;c.lineJoin='round';c.lineCap='round';
+    c.shadowColor='rgba(96,165,250,0.6)';c.shadowBlur=8;
+    c.stroke();
+    c.shadowBlur=0;
+    // Time labels
+    c.fillStyle='rgba(255,255,255,0.28)';
+    c.font='9px DM Mono';c.textAlign='center';
+    [0,15,30,45,60,75,90].forEach(m=>{
+      const idx=minuteData.findIndex(d=>d.mins>=m);
+      if(idx<0)return;
+      c.fillText(m===0?'Now':`+${m}m`,xOf(idx),H-5);
+    });
+    // Now line
+    c.strokeStyle='rgba(255,255,255,0.12)';c.lineWidth=1;c.setLineDash([2,4]);
     c.beginPath();c.moveTo(xOf(0),padT);c.lineTo(xOf(0),padT+cH);c.stroke();
     c.setLineDash([]);
   });
