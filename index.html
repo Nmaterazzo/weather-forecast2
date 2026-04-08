@@ -394,58 +394,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 .precip-svg-wrap{overflow-x:auto;cursor:grab}
 .precip-svg-wrap:active{cursor:grabbing}
 
-/* ── HEATMAP ── */
-.heatmap-card{
-  margin:0 16px 16px;
-  background:var(--glass);border:1px solid var(--border);border-radius:14px;
-  overflow:hidden;
-}
-.heatmap-hdr{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:12px 16px;border-bottom:1px solid var(--border);
-}
-.hm-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--dim)}
-.hm-toggle{
-  font-size:10px;letter-spacing:1px;padding:4px 10px;
-  border:1px solid var(--border);border-radius:6px;
-  background:transparent;color:var(--mid);cursor:pointer;
-  font-family:'Barlow Condensed',sans-serif;font-weight:600;
-  transition:all 0.15s;
-}
-.hm-toggle:hover{border-color:var(--accent);color:var(--accent)}
-.heatmap-scroll{overflow-x:auto;padding:10px}
-.heatmap-scroll::-webkit-scrollbar{height:3px}
-.heatmap-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.heatmap{display:grid;grid-template-columns:62px repeat(24,32px);gap:1px;min-width:830px}
-.hm-lbl{
-  display:flex;align-items:center;
-  font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);
-  font-family:'DM Mono',monospace;padding:0 4px;
-  background:rgba(5,8,15,0.6);border-radius:2px;
-  position:sticky;left:0;z-index:5;
-}
-.hm-hr{
-  text-align:center;padding:4px 1px;font-size:8px;color:var(--dim);
-  font-family:'DM Mono',monospace;border-radius:2px;
-  background:rgba(5,8,15,0.4);
-}
-.hm-hr.now-hr{background:var(--accent);color:#000;font-weight:500}
-.hm-hr.past-hr{opacity:0.45}
-.hm-cell{
-  height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:2px;cursor:default;transition:transform 0.1s;position:relative;
-}
-.hm-cell:hover{transform:scale(1.08);z-index:10;box-shadow:0 4px 20px rgba(0,0,0,0.7)}
-.hm-cell.now-cell{outline:1px solid var(--accent);outline-offset:1px}
-.hm-cell.past-cell{opacity:0.55}
-.hm-cell-v{font-size:10px;font-weight:500;font-family:'DM Mono',monospace}
-.hm-cell-s{font-size:7px;opacity:0.75}
-.hm-cond-cell{background:rgba(255,255,255,0.04);font-size:15px}
-.hm-precip-cell{background:linear-gradient(135deg,#1e3a5f,#1d4ed8)}
-.hm-wind-cell{background:linear-gradient(135deg,#431407,#c2410c)}
-.extra-rows{display:none}
-.extra-rows.expanded{display:contents}
-
 /* ── HISTORICAL CHART ── */
 .hist-card{
   margin:0 16px 16px;
@@ -958,7 +906,6 @@ async function getForecast(lat,lng){
   build10Day(blended,ambientData);
   buildSunTimes(lat,lng);
   buildOutlook(blended,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,currentCode,lat,lng);
-  buildHeatmap(blended);
 
   setLoad(95,'Loading history…');
   await fetchHistorical(lat,lng);
@@ -1413,7 +1360,7 @@ function buildHistCanvas(hd){
   if(!idxs.length)return;
 
   const dpr=window.devicePixelRatio||1;
-  const W=canvas.parentElement.clientWidth-32; // account for card padding
+  const W=Math.max(canvas.parentElement.clientWidth-32, window.innerWidth-64, 280);
   const H=220;
   canvas.width=W*dpr;canvas.height=H*dpr;
   canvas.style.width=W+'px';canvas.style.height=H+'px';
@@ -1624,45 +1571,62 @@ function toggleSunTimes(){
 }
 
 // ── TODAY'S OUTLOOK (NWS-style summary) ──
-async function buildOutlook(data,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,code,lat,lng){
+function buildOutlook(data,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,code,lat,lng){
   const el=document.getElementById('outlookText');
   if(!el)return;
   const now=new Date();
   const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const tomorrowStart=new Date(todayStart);tomorrowStart.setDate(tomorrowStart.getDate()+1);
-  // Gather today's data
   const todayIdx=[];
   for(let i=0;i<data.time.length;i++){const t=new Date(data.time[i]);if(t>=todayStart&&t<tomorrowStart)todayIdx.push(i);}
+  if(!todayIdx.length){el.textContent='Forecast data unavailable.';return;}
   const hiTemp=Math.max(...todayIdx.map(i=>data.temperature_2m[i]));
   const loTemp=Math.min(...todayIdx.map(i=>data.temperature_2m[i]));
   const maxPop=Math.max(...todayIdx.map(i=>data.precipitation_probability?.[i]||0));
   const totalRain=todayIdx.reduce((s,i)=>s+(data.rain?.[i]||0),0);
   const maxWind=Math.max(...todayIdx.map(i=>data.wind_gusts_10m?.[i]||0));
+  const maxUV=Math.max(...todayIdx.map(i=>data.uv_index?.[i]||0));
+  const wb=calcWetBulb(avgTemp,avgHumidity);
   const st=getSunriseSunset(lat,lng,now);
   const fmtH=h=>{const hr=Math.floor(h),mn=Math.round((h-hr)*60),h12=hr===0?12:hr>12?hr-12:hr,ap=hr<12?'AM':'PM';return`${h12}:${mn.toString().padStart(2,'0')} ${ap}`;};
   const srStr=st.sunrise?fmtH(st.sunrise):'—';
   const ssStr=st.sunset?fmtH(st.sunset):'—';
-  const prompt=`Write a 2-3 sentence NWS-style weather forecast for today only. Be specific and conversational, like a meteorologist talking to locals. Use this data: Current conditions: ${getDesc(code)}, ${Math.round(avgTemp)}°F (feels like ${Math.round(avgFeels)}°F). Today's high: ${Math.round(hiTemp)}°F, low: ${Math.round(loTemp)}°F. Humidity: ${Math.round(avgHumidity)}%. Wind: ${Math.round(avgWind)} mph with gusts to ${Math.round(avgGusts)} mph. Chance of rain: ${Math.round(maxPop)}%${totalRain>0.01?`, expected accumulation ${totalRain.toFixed(2)}"`:''}.  Max wind gusts: ${Math.round(maxWind)} mph. Sunrise: ${srStr}, Sunset: ${ssStr}. Location is near Tampa, FL. Do not use bullet points. No preamble. Just the forecast text.`;
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:200,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const d=await resp.json();
-    const text=d.content?.[0]?.text||'Forecast unavailable.';
-    el.textContent=text;
-  }catch(e){
-    // Fallback: write it ourselves from the data
-    const condStr=getDesc(code).toLowerCase();
-    const rainStr=maxPop>60?`Rain is likely${totalRain>0.05?` with up to ${totalRain.toFixed(2)}" expected`:''}. `:'';
-    const windStr=maxWind>25?`Gusty winds up to ${Math.round(maxWind)} mph possible. `:'';
-    el.textContent=`${condStr.charAt(0).toUpperCase()+condStr.slice(1)} skies today with a high near ${Math.round(hiTemp)}°F. ${rainStr}${windStr}Humidity around ${Math.round(avgHumidity)}%. Sunrise at ${srStr}, sunset at ${ssStr}.`;
-  }
+
+  // Build smart local forecast text
+  const condStr=getDesc(code);
+  const hi=Math.round(hiTemp),lo=Math.round(loTemp);
+  const humid=Math.round(avgHumidity);
+  const gustStr=maxWind>avgGusts+5?` with gusts up to ${Math.round(maxWind)} mph`:'';
+
+  let opening='';
+  if(code>=95)opening=`Stormy conditions in the area today`;
+  else if(code>=61&&code<=82)opening=`Rainy day ahead`;
+  else if(code>=51&&code<=55)opening=`Dreary and drizzly today`;
+  else if(code===3)opening=`Overcast skies throughout the day`;
+  else if(code===2)opening=`Partly cloudy skies today`;
+  else if(code<=1)opening=`Mostly clear skies today`;
+  else opening=`${condStr} conditions expected`;
+
+  let rainSentence='';
+  if(maxPop>=70)rainSentence=` Rain is likely${totalRain>0.1?`, with accumulations near ${totalRain.toFixed(2)}"`:totalRain>0.01?`, around ${totalRain.toFixed(2)}" possible`:''}. Best to carry an umbrella.`;
+  else if(maxPop>=40)rainSentence=` A ${Math.round(maxPop)}% chance of showers${totalRain>0.01?`, up to ${totalRain.toFixed(2)}" possible`:''}. Keep an eye on the sky.`;
+  else if(maxPop>=20)rainSentence=` Slight chance of a passing shower (${Math.round(maxPop)}%).`;
+
+  let windSentence='';
+  if(maxWind>=35)windSentence=` Breezy to gusty — winds around ${Math.round(avgWind)} mph${gustStr}.`;
+  else if(maxWind>=20)windSentence=` Winds around ${Math.round(avgWind)} mph${gustStr}.`;
+
+  let heatSentence='';
+  if(wb>=80)heatSentence=` Wet bulb at ${wb}°F — heat index will feel dangerous outdoors.`;
+  else if(wb>=75)heatSentence=` Muggy and oppressive, especially in the afternoon.`;
+  else if(wb>=68)heatSentence=` Humidity will make it feel warmer than the thermometer suggests.`;
+
+  let uvSentence='';
+  if(maxUV>=8)uvSentence=` UV index peaks at ${Math.round(maxUV)} — sun protection essential.`;
+  else if(maxUV>=6)uvSentence=` UV index up to ${Math.round(maxUV)}, sunscreen recommended.`;
+
+  const outlook=`${opening}, high near ${hi}°F and low around ${lo}°F.${rainSentence}${windSentence}${heatSentence}${uvSentence} Sunrise ${srStr}, sunset ${ssStr}.`;
+  el.textContent=outlook;
 }
 
 // ── RAIN ALERT ──
