@@ -1,9 +1,12 @@
-const CACHE_NAME = 'weather-app-v1';
+const CACHE_NAME = 'weather-app-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(['/']);
+      return cache.addAll([
+        '/weather-forecast/',
+        '/weather-forecast/weather-forecast2.html'
+      ]);
     })
   );
 });
