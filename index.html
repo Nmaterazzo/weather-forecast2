@@ -727,7 +727,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
     <div class="hist-hdr">
       <div class="hist-title">Temp + Wind + Rain</div>
     </div>
-    <svg id="histSvg" style="display:block;width:100%;overflow:visible"></svg>
+    <div id="histSvg" style="overflow-x:auto;width:100%"></div>
   </div>
 
   <!-- ANIMATED RADAR -->
@@ -902,17 +902,20 @@ function getCurrentLocation(){
   if(!navigator.geolocation){alert('Geolocation not supported');return;}
   window._userPickedLocation=true;
   hideSearch();
-  setLoad(5,'Getting location…');
+  // Show a subtle loading indicator in the nav instead of the full load screen
+  document.getElementById('navLoc').textContent='Getting location…';
+  const opts={enableHighAccuracy:false,timeout:10000,maximumAge:60000};
   navigator.geolocation.getCurrentPosition(
     p=>getForecast(p.coords.latitude,p.coords.longitude),
-    ()=>{hideLoad();alert('Location unavailable');}
+    e=>{document.getElementById('navLoc').textContent='Location unavailable';alert('Could not get location. Try searching a city instead.');},
+    opts
   );
 }
 
 // ── MAIN FETCH ──
 async function getForecast(lat,lng){
   currentLatLng={lat,lng};
-  document.getElementById('app').style.opacity='0.3';
+  document.getElementById('navLoc').textContent='Loading…';
   setLoad(10,'Connecting to models…');
 
   const isUS=lat>=24&&lat<=50&&lng>=-125&&lng<=-66;
@@ -1035,8 +1038,6 @@ async function getForecast(lat,lng){
   checkRainAlert(min?.data?.minutely_15,ambientData);
 
   setLoad(100,'Ready');
-  document.getElementById('app').style.opacity='1';
-  document.getElementById('app').style.transition='opacity 0.5s';
   hideLoad();
 }
 
@@ -1513,7 +1514,7 @@ function buildHistChart(hd){
 
   svg+=`</svg>`;
   const el=document.getElementById('histSvg');
-  el.outerHTML=`<div style="overflow-x:auto;padding:0 0 4px">${svg}</div>`;
+  if(el)el.innerHTML=svg;
 }
 
 // ── HEATMAP (enhanced from original) ──
@@ -1678,7 +1679,14 @@ async function initRadar(lat,lng){
   radarMarker=L.marker([lat,lng]).addTo(radarMap).bindPopup('Your Location').openPopup();
   await loadRainViewer();
   initRidgeCompact(lat,lng);
-  setTimeout(()=>{radarMap.invalidateSize();if(ridgeCompactMap)ridgeCompactMap.invalidateSize();},200);
+  setTimeout(()=>{
+    if(radarMap)radarMap.invalidateSize();
+    if(ridgeCompactMap)ridgeCompactMap.invalidateSize();
+  },300);
+  setTimeout(()=>{
+    if(radarMap)radarMap.invalidateSize();
+    if(ridgeCompactMap)ridgeCompactMap.invalidateSize();
+  },800);
 }
 
 function initRidgeCompact(lat,lng){
