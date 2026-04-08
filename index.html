@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>WXBLEND</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow+Condensed:wght@200;300;400;600;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -395,41 +394,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 .precip-svg-wrap{overflow-x:auto;cursor:grab}
 .precip-svg-wrap:active{cursor:grabbing}
 
-/* ── RADAR ── */
-.radar-card{
-  margin:0 16px 16px;
-  background:var(--glass);border:1px solid var(--border);border-radius:14px;
-  overflow:hidden;
-}
-.radar-hdr{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:12px 16px;border-bottom:1px solid var(--border);
-}
-.radar-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--dim)}
-.radar-tabs{display:flex;gap:6px}
-.rtab{
-  padding:4px 10px;border-radius:6px;font-size:10px;letter-spacing:1px;
-  border:1px solid var(--border);background:transparent;color:var(--dim);
-  cursor:pointer;transition:all 0.15s;font-family:'Barlow Condensed',sans-serif;font-weight:600;
-}
-.rtab.active{background:var(--accent);border-color:var(--accent);color:#000}
-.radar-map-box{height:260px;position:relative;background:#05080f}
-.radar-ctrl{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-top:1px solid var(--border);
-  background:rgba(5,8,15,0.5);
-}
-.rctrl-btn{
-  padding:5px 14px;border-radius:6px;font-size:10px;letter-spacing:1px;
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;cursor:pointer;
-  border:none;text-transform:uppercase;transition:all 0.15s;
-}
-.rctrl-play{background:var(--accent);color:#000}
-.rctrl-play:hover{background:var(--accent2)}
-.rctrl-pause{background:var(--glass);border:1px solid var(--border);color:var(--mid)}
-#radarSlider{flex:1;accent-color:var(--accent);height:3px}
-.radar-time{font-size:9px;color:var(--dim);letter-spacing:1px;min-width:120px;text-align:right}
-
 /* ── HEATMAP ── */
 .heatmap-card{
   margin:0 16px 16px;
@@ -490,13 +454,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 }
 .hist-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .hist-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--dim)}
-
-/* ── FULL RADAR ── */
-.fullradar-card{
-  margin:0 16px 16px;
-  background:var(--glass);border:1px solid var(--border);border-radius:14px;
-  overflow:hidden;
-}
+.hist-legend-item{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--dim);letter-spacing:1px}
+.hist-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 
 /* ── FOOTER ── */
 .footer{padding:20px 16px;text-align:center;font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
@@ -698,53 +657,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
     </div>
   </div>
 
-  <!-- NOAA RIDGE RADAR -->
-  <div class="sec-hdr"><div class="sec-title">NOAA RIDGE Radar</div><div class="sec-line"></div></div>
-  <div class="radar-card">
-    <div class="radar-hdr">
-      <div class="radar-title">High-Resolution · US</div>
-      <div class="radar-tabs">
-        <button class="rtab active" id="ridgeCompactBrefBtn" onclick="switchRidgeCompact('bref')">REFL</button>
-        <button class="rtab" id="ridgeCompactBvelBtn" onclick="switchRidgeCompact('bvel')">VEL</button>
-      </div>
-    </div>
-    <div class="radar-map-box">
-      <div id="ridgeCompactMap" style="height:100%;width:100%;"></div>
-      <div id="ridgeCompactStatus" style="position:absolute;top:8px;right:8px;background:rgba(5,8,15,0.9);padding:3px 8px;border-radius:4px;font-size:9px;color:var(--green);z-index:500;letter-spacing:1px;border:1px solid var(--border);">US HIGH-RES</div>
-    </div>
-  </div>
-
   <!-- 10-DAY -->
   <div class="sec-hdr"><div class="sec-title">10-Day Forecast</div><div class="sec-line"></div></div>
   <div class="tenday-wrap">
     <div class="tenday-row" id="tendayRow"></div>
   </div>
 
-  <!-- HEATMAP -->
   <!-- HISTORICAL -->
   <div class="sec-hdr"><div class="sec-title">Past 24 Hours · Observed</div><div class="sec-line"></div></div>
   <div class="hist-card">
     <div class="hist-hdr">
-      <div class="hist-title">Temp + Wind + Rain</div>
+      <div class="hist-title">CONDITIONS REWIND</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="hist-legend-item"><span class="hist-dot" style="background:var(--accent)"></span>Temp</div>
+        <div class="hist-legend-item"><span class="hist-dot" style="background:var(--warm)"></span>Wind</div>
+        <div class="hist-legend-item"><span class="hist-dot" style="background:var(--rain-col)"></span>Rain</div>
+      </div>
     </div>
-    <div id="histSvg" style="overflow-x:auto;width:100%"></div>
-  </div>
-
-  <!-- ANIMATED RADAR -->
-  <div class="sec-hdr"><div class="sec-title">Animated Radar · RainViewer</div><div class="sec-line"></div></div>
-  <div class="fullradar-card">
-    <div class="radar-hdr">
-      <div class="radar-title">Past + Nowcast</div>
-      <div class="radar-time" id="radarTimeDisplay">—</div>
-    </div>
-    <div style="height:320px;position:relative;background:#05080f">
-      <div id="radarMap" style="height:100%;width:100%;"></div>
-    </div>
-    <div class="radar-ctrl">
-      <button class="rctrl-btn rctrl-play" onclick="playRadarAnimation()">▶ Play</button>
-      <button class="rctrl-btn rctrl-pause" onclick="pauseRadarAnimation()">⏸ Pause</button>
-      <input type="range" id="radarSlider" min="0" max="0" value="0" oninput="updateRadarFrame(this.value)">
-      <div class="radar-time" id="radarTimeDisplay2">—</div>
+    <div style="position:relative">
+      <canvas id="histCanvas" style="display:block;width:100%;border-radius:8px"></canvas>
+      <div id="histTooltip" style="position:absolute;display:none;background:rgba(8,13,22,0.95);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;z-index:10;backdrop-filter:blur(10px);min-width:110px"></div>
     </div>
   </div>
 
@@ -773,16 +705,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
   <div id="humidity" style="display:none"></div>
   <div id="precipProb" style="display:none"></div>
 
-  <div class="footer"><span class="live-dot"></span>GFS · ECMWF · NWS BLEND · AMBIENT WEATHER · RAINVIEWER</div>
+  <div class="footer"><span class="live-dot"></span>GFS · ECMWF · NWS BLEND · AMBIENT WEATHER · OPEN-METEO</div>
 </div>
 
 <script>
 // ── STATE ──
 let currentForecastData=null,currentHistoricalData=null,currentLatLng=null;
 let currentAmbientData=null;
-let radarMap=null,radarMarker=null,radarLayer=null;
-let radarFrames=[],radarAnimTimer=null,currentFrameIdx=0;
-let ridgeCompactMap=null,ridgeCompactLayer=null;
 let weatherCanvas=null,ctx=null,particles=[],animFrame=null,currentWeatherClass='clear';
 let windDeg=0;
 
@@ -1031,9 +960,8 @@ async function getForecast(lat,lng){
   buildOutlook(blended,avgTemp,avgFeels,avgWind,avgGusts,avgHumidity,currentCode,lat,lng);
   buildHeatmap(blended);
 
-  setLoad(95,'Loading radar…');
+  setLoad(95,'Loading history…');
   await fetchHistorical(lat,lng);
-  initRadar(lat,lng);
 
   checkRainAlert(min?.data?.minutely_15,ambientData);
 
@@ -1143,7 +1071,8 @@ function buildCompass(deg,speed,gusts){
     html+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,0.2)" stroke-width="${i%2===0?1.5:0.8}"/>`;
     if(i%2===0)html+=`<text x="${lx}" y="${ly+3}" text-anchor="middle" fill="${d==='N'?'var(--red)':'rgba(255,255,255,0.4)'}" font-size="8" font-family="Barlow Condensed" font-weight="700">${d}</text>`;
   });
-  const windRad=(deg-90)*Math.PI/180;
+  // Wind FROM deg means air comes from that direction, arrow shows where it's going (opposite)
+  const windRad=(deg+90)*Math.PI/180; // +180 to flip, -90 for SVG coords = net +90
   const ax=cx+Math.cos(windRad)*28,ay=cy+Math.sin(windRad)*28;
   const bx=cx+Math.cos(windRad+Math.PI)*12,by=cy+Math.sin(windRad+Math.PI)*12;
   html+=`<line x1="${bx}" y1="${by}" x2="${ax}" y2="${ay}" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>`;
@@ -1396,10 +1325,10 @@ function build10Day(data,ambientData){
           <div style="position:absolute;left:${barLeft}%;transform:translateX(-50%);top:-10px;font-size:9px;color:var(--dim);font-family:'DM Mono',monospace">${Math.round(day.lo)}°</div>
           <div style="position:absolute;right:${barRight}%;transform:translateX(50%);top:-10px;font-size:9px;color:var(--text);font-family:'DM Mono',monospace">${Math.round(day.hi)}°</div>
         </div>
-        <div class="dr-pop"><div class="dr-pop-val">${Math.round(day.pop)}%</div><div class="dr-pop-lbl">POP</div></div>
+        <div class="dr-pop"><div class="dr-pop-val">${Math.round(day.pop)}%</div><div class="dr-pop-lbl">PRECIP</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
           <div style="font-size:11px;color:var(--rain-col);font-family:'DM Mono',monospace">${precipStr}</div>
-          <div style="font-size:9px;color:var(--dim);font-family:'DM Mono',monospace">${Math.round(day.maxWind)}<span style="font-size:8px">↑mph</span></div>
+          <div style="font-size:9px;color:var(--dim);font-family:'DM Mono',monospace">${Math.round(day.maxWind)}<span style="font-size:8px"> mph</span></div>
         </div>
       </div>
       <div class="detail-panel" id="detail_${idx}">
@@ -1434,318 +1363,219 @@ function toggleDayDetail(id,diArr){
     const temp=Math.round(data.temperature_2m[i]);
     const pop=Math.round(data.precipitation_probability?.[i]||0);
     const wind=Math.round(data.wind_speed_10m[i]);
+    const windDir=data.wind_direction_10m?.[i]||0;
     const code=data.weather_code?.[i]||0;
+    // Arrow points direction wind is going TO (opposite of FROM)
+    const arrowDeg=windDir+180;
     html+=`<div class="dh-cell">
       <div class="dh-time">${timeStr}</div>
       <div class="dh-icon">${getEmoji(code,hr)}</div>
       <div class="dh-temp">${temp}°</div>
       <div class="dh-pop">${pop>0?'💧'+pop+'%':''}</div>
-      <div class="dh-wind">${wind}↗</div>
+      <div class="dh-wind" style="display:flex;align-items:center;gap:3px;justify-content:center">
+        <svg width="12" height="12" viewBox="0 0 12 12" style="flex-shrink:0;transform:rotate(${arrowDeg}deg)">
+          <line x1="6" y1="10" x2="6" y2="2" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+          <polyline points="3,5 6,2 9,5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        ${wind}
+      </div>
     </div>`;
   });
   strip.innerHTML=html;
 }
 
-// ── HISTORICAL CHART ──
+// ── HISTORICAL CHART (canvas) ──
 async function fetchHistorical(lat,lng){
   const y=new Date();y.setDate(y.getDate()-1);
   const sd=y.toISOString().split('T')[0],ed=new Date().toISOString().split('T')[0];
-  const r=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${sd}&end_date=${ed}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`);
-  const hd=r.ok?await r.json():null;
-  if(hd)buildHistChart(hd);
+  try{
+    const r=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${sd}&end_date=${ed}&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`);
+    if(r.ok)buildHistCanvas(await r.json());
+  }catch(e){console.warn('Historical fetch failed',e);}
 }
 
-function buildHistChart(hd){
+function buildHistCanvas(hd){
   if(!hd?.hourly)return;
-  const times=hd.hourly.time;
+  const canvas=document.getElementById('histCanvas');
+  if(!canvas)return;
+
+  const times=hd.hourly.time||[];
   const temps=hd.hourly.temperature_2m||[];
   const winds=hd.hourly.wind_speed_10m||[];
+  const gusts=hd.hourly.wind_gusts_10m||[];
   const rain=hd.hourly.rain||[];
-  let cumRain=0;const cumRains=rain.map(r=>{cumRain+=r||0;return cumRain;});
-  const n=Math.min(times.length,48);
-  const padL=40,padR=16,padT=16,padB=28,chartH=160;
-  const totalW=Math.max(600,n*24);
-  const maxT=Math.max(...temps.slice(0,n)),minT=Math.min(...temps.slice(0,n)),rangeT=maxT-minT||1;
-  const maxW=Math.max(...winds.slice(0,n))||1;
-  const maxR=Math.max(...cumRains.slice(0,n))||0.01;
-  const usableW=totalW-padL-padR;
-  const usableH=chartH-padT-padB;
 
-  let svg=`<svg width="${totalW}" height="${chartH}" viewBox="0 0 ${totalW} ${chartH}" style="display:block">`;
-  // Grid
-  [0,0.25,0.5,0.75,1].forEach(p=>{
-    const y=padT+usableH*(1-p);
-    const tv=Math.round(minT+rangeT*p);
-    svg+=`<line x1="${padL}" y1="${y}" x2="${totalW-padR}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>`;
-    svg+=`<text x="${padL-4}" y="${y+4}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.3)" font-family="DM Mono">${tv}°</text>`;
-  });
-
-  const xOf=i=>(i/(n-1))*usableW+padL;
-  // Rain bars
-  rain.slice(0,n).forEach((r,i)=>{
-    if(!r)return;
-    const bh=(r/maxR)*usableH*0.8;
-    svg+=`<rect x="${xOf(i)-5}" y="${padT+usableH-bh}" width="10" height="${bh}" rx="2" fill="rgba(59,130,246,0.4)"/>`;
-  });
-  // Wind line
-  let wPath=winds.slice(0,n).map((w,i)=>`${i===0?'M':'L'}${xOf(i)},${padT+usableH-((w/maxW)*usableH*0.7)}`).join(' ');
-  svg+=`<path d="${wPath}" fill="none" stroke="var(--warm)" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,3"/>`;
-  // Temp line
-  let tPts=temps.slice(0,n).map((t,i)=>[xOf(i),padT+usableH-((t-minT)/rangeT)*usableH]);
-  let tPath=`M${tPts[0][0]},${tPts[0][1]}`;
-  for(let i=1;i<tPts.length;i++){const cx_=(tPts[i][0]+tPts[i-1][0])/2;tPath+=` C${cx_},${tPts[i-1][1]} ${cx_},${tPts[i][1]} ${tPts[i][0]},${tPts[i][1]}`;}
-  svg+=`<path d="${tPath}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
-
-  // Time labels
-  times.slice(0,n).forEach((t,i)=>{
-    if(i%6!==0)return;
-    const d=new Date(t),hr=d.getHours();
-    const lbl=hr===0?d.toLocaleDateString('en-US',{month:'short',day:'numeric'}):hr<12?`${hr}a`:hr===12?'12p':`${hr-12}p`;
-    svg+=`<text x="${xOf(i)}" y="${chartH-8}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.3)" font-family="Barlow Condensed">${lbl}</text>`;
-  });
-
-  // Legend
-  svg+=`<line x1="${padL}" y1="${chartH-4}" x2="${padL+16}" y2="${chartH-4}" stroke="var(--accent)" stroke-width="2"/>`;
-  svg+=`<text x="${padL+19}" y="${chartH}" font-size="8" fill="rgba(255,255,255,0.4)" font-family="Barlow Condensed">Temp</text>`;
-  svg+=`<line x1="${padL+60}" y1="${chartH-4}" x2="${padL+76}" y2="${chartH-4}" stroke="var(--warm)" stroke-width="1.5" stroke-dasharray="3,2"/>`;
-  svg+=`<text x="${padL+79}" y="${chartH}" font-size="8" fill="rgba(255,255,255,0.4)" font-family="Barlow Condensed">Wind</text>`;
-  svg+=`<rect x="${padL+118}" y="${chartH-9}" width="10" height="6" rx="2" fill="rgba(59,130,246,0.5)"/>`;
-  svg+=`<text x="${padL+131}" y="${chartH}" font-size="8" fill="rgba(255,255,255,0.4)" font-family="Barlow Condensed">Rain</text>`;
-
-  svg+=`</svg>`;
-  const el=document.getElementById('histSvg');
-  if(el)el.innerHTML=svg;
-}
-
-// ── HEATMAP (enhanced from original) ──
-function buildHeatmap(hourlyData){
-  if(!hourlyData||!hourlyData.time)return;
+  // Only last 24 hours
   const now=new Date();
-  const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const tomorrowStart=new Date(todayStart);tomorrowStart.setDate(tomorrowStart.getDate()+1);
-  const h2i={};
-  for(let i=0;i<hourlyData.time.length;i++){
-    const t=new Date(hourlyData.time[i]);
-    if(t>=todayStart&&t<tomorrowStart){const h=t.getHours();if(!h2i[h])h2i[h]=i;}
-  }
-  if(!Object.keys(h2i).length)return;
-  const ch=now.getHours();
-  let srH=6,ssH=18;
-  if(currentLatLng){const st=getSunriseSunset(currentLatLng.lat,currentLatLng.lng,now);if(st.sunrise!==null){srH=st.sunrise;ssH=st.sunset;}}
-  const histMap={};
-  if(currentHistoricalData?.hourly){
-    currentHistoricalData.hourly.time.forEach((t,i)=>{const d=new Date(t);if(d>=todayStart&&d<tomorrowStart)histMap[d.getHours()]=i;});
-  }
-  const cc={temp:parseFloat(document.getElementById('temp').textContent)||null,feels:parseFloat(document.getElementById('feelsLike').textContent)||null,wind:parseFloat(document.getElementById('wind').textContent)||null,gusts:parseFloat(document.getElementById('windGusts').textContent)||null,precip:parseFloat(document.getElementById('precip').textContent)||null};
-  const allT=Object.values(h2i).map(i=>hourlyData.temperature_2m[i]);
-  let html='';
-  html+='<div class="hm-lbl"></div>';
-  for(let h=0;h<24;h++){
-    const isPast=h<ch,isCur=h===ch;
-    const cls=isCur?'now-hr':(isPast?'past-hr':'');
-    const isSR=h===Math.floor(srH),isSS=h===Math.floor(ssH);
-    let lbl;
-    if(isSR){let sm=Math.round((srH-Math.floor(srH))*60),sh=Math.floor(srH);if(sm>=60){sm=0;sh++;}const h12=sh===0?12:sh>12?sh-12:sh;lbl=`${h12}:${sm.toString().padStart(2,'0')}`;}
-    else if(isSS){let sm=Math.round((ssH-Math.floor(ssH))*60),sh=Math.floor(ssH);if(sm>=60){sm=0;sh++;}const h12=sh===0?12:sh>12?sh-12:sh;lbl=`${h12}:${sm.toString().padStart(2,'0')}`;}
-    else lbl=h===0?'12A':h<12?`${h}A`:h===12?'12P':`${h-12}P`;
-    html+=`<div class="hm-hr ${cls}">${lbl}</div>`;
-  }
-  // Cond
-  html+='<div class="hm-lbl">COND</div>';
-  for(let h=0;h<24;h++){
-    const idx=h2i[h],isPast=h<ch,isCur=h===ch;
-    const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-    const cls=isCur?'now-cell':(isPast?'past-cell':'');
-    const isSR=h===Math.floor(srH),isSS=h===Math.floor(ssH);
-    let emoji=isSR?'🌅':isSS?'🌇':(idx!==undefined?getEmoji(hourlyData.weather_code?.[idx]||0,h,srH,ssH):'—');
-    html+=`<div class="hm-cell hm-cond-cell ${cls}" style="opacity:${isDL?1:0.6}">${emoji}</div>`;
-  }
-  // Temp
-  html+='<div class="hm-lbl">TEMP</div>';
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let t;
-      if(h===ch&&cc.temp!==null)t=Math.round(cc.temp);
-      else if(h<ch&&histMap[h]!==undefined)t=Math.round(currentHistoricalData.hourly.temperature_2m[histMap[h]]);
-      else t=Math.round(hourlyData.temperature_2m[idx]);
-      const col=getTempColor(t),op=getTempOpacity(t,allT);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell ${cls}" style="background:${col};opacity:${isDL?op:op*0.65}"><div class="hm-cell-v">${t}°</div></div>`;
-    }else html+='<div class="hm-cell" style="background:rgba(255,255,255,0.03)">—</div>';
-  }
-  // Feels
-  html+='<div class="hm-lbl">FEELS</div>';
-  const allF=Object.values(h2i).map(i=>hourlyData.apparent_temperature?.[i]||hourlyData.temperature_2m[i]);
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let f;
-      if(h===ch&&cc.feels!==null)f=Math.round(cc.feels);
-      else if(h<ch&&histMap[h]!==undefined)f=Math.round(currentHistoricalData.hourly.temperature_2m[histMap[h]]);
-      else f=Math.round(hourlyData.apparent_temperature?.[idx]||hourlyData.temperature_2m[idx]);
-      const col=getTempColor(f),op=getTempOpacity(f,allF);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell ${cls}" style="background:${col};opacity:${isDL?op:op*0.65}"><div class="hm-cell-v">${f}°</div></div>`;
-    }else html+='<div class="hm-cell" style="background:rgba(255,255,255,0.03)">—</div>';
-  }
-  // POP
-  html+='<div class="hm-lbl">POP</div>';
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let p;
-      if(h<ch&&histMap[h]!==undefined){const hi=histMap[h];const ar=(currentHistoricalData.hourly.rain?.[hi]||0)+(currentHistoricalData.hourly.snowfall?.[hi]||0);p=ar>0?100:0;}
-      else p=Math.round(hourlyData.precipitation_probability?.[idx]||0);
-      const op=Math.max(0.07,p/100);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell hm-precip-cell ${cls}" style="opacity:${isDL?op:op*0.7}"><div class="hm-cell-v" style="color:#fff">${p}%</div></div>`;
-    }else html+='<div class="hm-cell hm-precip-cell" style="opacity:0.05">—</div>';
-  }
-  // EXTRA
-  html+='<div class="extra-rows" id="heatmapExtraRows">';
-  // Precip
-  html+='<div class="hm-lbl">RAIN</div>';
-  const allPA=Object.values(h2i).map(i=>(hourlyData.rain?.[i]||0)+(hourlyData.snowfall?.[i]||0));
-  const maxPA=Math.max(...allPA,0.01);
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let pa;
-      if(h===ch&&currentAmbientData?.hourlyrainin!==undefined)pa=currentAmbientData.hourlyrainin;
-      else if(h===ch&&cc.precip!==null)pa=cc.precip;
-      else if(h<ch){const lr=getLoggedRainForHour(h);if(lr!==null)pa=lr;else if(histMap[h]!==undefined){const hi=histMap[h];pa=(currentHistoricalData.hourly.rain?.[hi]||0)+(currentHistoricalData.hourly.snowfall?.[hi]||0);}else pa=0;}
-      else pa=(hourlyData.rain?.[idx]||0)+(hourlyData.snowfall?.[idx]||0);
-      const op=Math.max(0.07,pa/maxPA);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell hm-precip-cell ${cls}" style="opacity:${isDL?op:op*0.7}"><div class="hm-cell-v" style="color:#fff">${pa.toFixed(2)}"</div></div>`;
-    }else html+='<div class="hm-cell hm-precip-cell" style="opacity:0.05">—</div>';
-  }
-  // Wind
-  html+='<div class="hm-lbl">WIND</div>';
-  const allW=Object.values(h2i).map(i=>hourlyData.wind_speed_10m[i]);
-  const maxW2=Math.max(...allW,1);
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let w;
-      if(h===ch&&cc.wind!==null)w=Math.round(cc.wind);
-      else if(h<ch&&histMap[h]!==undefined)w=Math.round(currentHistoricalData.hourly.wind_speed_10m[histMap[h]]);
-      else w=Math.round(hourlyData.wind_speed_10m[idx]);
-      const op=Math.max(0.15,w/maxW2);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell hm-wind-cell ${cls}" style="opacity:${isDL?op:op*0.7}"><div class="hm-cell-v" style="color:#fff">${w}</div><div class="hm-cell-s" style="color:#fff">mph</div></div>`;
-    }else html+='<div class="hm-cell hm-wind-cell" style="opacity:0.15">—</div>';
-  }
-  // Gusts
-  html+='<div class="hm-lbl">GUSTS</div>';
-  const allG=Object.values(h2i).map(i=>hourlyData.wind_gusts_10m?.[i]||hourlyData.wind_speed_10m[i]*1.3);
-  const maxG2=Math.max(...allG,1);
-  for(let h=0;h<24;h++){
-    const idx=h2i[h];
-    if(idx!==undefined){
-      let g;
-      if(h===ch&&cc.gusts!==null)g=Math.round(cc.gusts);
-      else if(h<ch&&histMap[h]!==undefined)g=Math.round(currentHistoricalData.hourly.wind_gusts_10m?.[histMap[h]]||currentHistoricalData.hourly.wind_speed_10m[histMap[h]]*1.3);
-      else g=Math.round(hourlyData.wind_gusts_10m?.[idx]||hourlyData.wind_speed_10m[idx]*1.3);
-      const op=Math.max(0.15,g/maxG2);
-      const isDL=h>=Math.floor(srH)&&h<=Math.floor(ssH);
-      const cls=h===ch?'now-cell':(h<ch?'past-cell':'');
-      html+=`<div class="hm-cell hm-wind-cell ${cls}" style="opacity:${isDL?op:op*0.7}"><div class="hm-cell-v" style="color:#fff">${g}</div><div class="hm-cell-s" style="color:#fff">mph</div></div>`;
-    }else html+='<div class="hm-cell hm-wind-cell" style="opacity:0.15">—</div>';
-  }
-  html+='</div>';
-  document.getElementById('heatmapGrid').innerHTML=html;
-}
+  const cutoff=new Date(now.getTime()-24*3600000);
+  let idxs=[];
+  for(let i=0;i<times.length;i++){if(new Date(times[i])>=cutoff&&new Date(times[i])<=now)idxs.push(i);}
+  if(!idxs.length)return;
 
-function toggleHeatmapExpand(){
-  const er=document.getElementById('heatmapExtraRows'),btn=document.getElementById('expandBtn');
-  if(er.classList.contains('expanded')){er.classList.remove('expanded');btn.textContent='EXPAND';}
-  else{er.classList.add('expanded');btn.textContent='COLLAPSE';}
-}
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth-32; // account for card padding
+  const H=220;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const c=canvas.getContext('2d');
+  c.scale(dpr,dpr);
 
-// ── RADAR ──
-async function initRadar(lat,lng){
-  if(!radarMap){
-    radarMap=L.map('radarMap').setView([lat,lng],7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy;CARTO',maxZoom:19}).addTo(radarMap);
-  }else radarMap.setView([lat,lng],7);
-  if(radarMarker)radarMap.removeLayer(radarMarker);
-  radarMarker=L.marker([lat,lng]).addTo(radarMap).bindPopup('Your Location').openPopup();
-  await loadRainViewer();
-  initRidgeCompact(lat,lng);
-  setTimeout(()=>{
-    if(radarMap)radarMap.invalidateSize();
-    if(ridgeCompactMap)ridgeCompactMap.invalidateSize();
-  },300);
-  setTimeout(()=>{
-    if(radarMap)radarMap.invalidateSize();
-    if(ridgeCompactMap)ridgeCompactMap.invalidateSize();
-  },800);
-}
+  const padL=38,padR=12,padT=28,padB=36;
+  const cW=W-padL-padR,cH=H-padT-padB;
+  const n=idxs.length;
+  const xOf=i=>(i/(n-1))*cW+padL;
 
-function initRidgeCompact(lat,lng){
-  if(!ridgeCompactMap){
-    ridgeCompactMap=L.map('ridgeCompactMap').setView([lat,lng],6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy;CARTO',maxZoom:19}).addTo(ridgeCompactMap);
-  }else ridgeCompactMap.setView([lat,lng],6);
-  L.marker([lat,lng]).addTo(ridgeCompactMap).bindPopup('Your Location');
-  if(lat>=24&&lat<=50&&lng>=-125&&lng<=-66){loadRidgeLayer('bref');}
-  else{document.getElementById('ridgeCompactStatus').textContent='OUTSIDE US';document.getElementById('ridgeCompactStatus').style.color='var(--red)';}
-}
+  const tVals=idxs.map(i=>temps[i]||0);
+  const wVals=idxs.map(i=>winds[i]||0);
+  const gVals=idxs.map(i=>gusts[i]||0);
+  const rVals=idxs.map(i=>rain[i]||0);
+  const maxT=Math.max(...tVals),minT=Math.min(...tVals),rangeT=maxT-minT||1;
+  const maxW=Math.max(...gVals)||1;
+  const maxR=Math.max(...rVals,0.001);
+  const cumRain=[];let cr=0;rVals.forEach(r=>{cr+=r;cumRain.push(cr);});
 
-function loadRidgeLayer(type){
-  if(ridgeCompactLayer)ridgeCompactMap.removeLayer(ridgeCompactLayer);
-  const ln=`conus_${type}_qcd`;
-  ridgeCompactLayer=L.tileLayer.wms(`https://opengeo.ncep.noaa.gov/geoserver/conus/${ln}/ows`,{layers:ln,format:'image/png',transparent:true,opacity:0.7,attribution:'NOAA/NWS'});
-  ridgeCompactLayer.addTo(ridgeCompactMap);
-}
+  // ── Background ──
+  c.fillStyle='rgba(8,13,22,0)';
+  c.fillRect(0,0,W,H);
 
-function switchRidgeCompact(type){
-  if(!currentLatLng)return;
-  loadRidgeLayer(type);
-  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('ridgeCompact'+type.charAt(0).toUpperCase()+type.slice(1)+'Btn').classList.add('active');
-}
+  // ── Gridlines ──
+  c.strokeStyle='rgba(255,255,255,0.05)';
+  c.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(p=>{
+    const y=padT+cH*(1-p);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();
+    const tv=Math.round(minT+rangeT*p);
+    c.fillStyle='rgba(255,255,255,0.25)';
+    c.font=`${9*dpr/dpr}px DM Mono`;c.textAlign='right';
+    c.fillText(tv+'°',padL-5,y+4);
+  });
 
-async function loadRainViewer(){
-  try{
-    const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');
-    const d=await r.json();
-    radarFrames=[];
-    if(d.radar?.past)radarFrames=d.radar.past.map(f=>({time:f.time,path:f.path,isPast:true}));
-    if(d.radar?.nowcast)radarFrames=radarFrames.concat(d.radar.nowcast.map(f=>({time:f.time,path:f.path,isPast:false})));
-    if(radarFrames.length>0){
-      const sl=document.getElementById('radarSlider');
-      sl.max=radarFrames.length-1;sl.value=radarFrames.length-1;
-      currentFrameIdx=radarFrames.length-1;updateRadarFrame(currentFrameIdx);
-    }
-  }catch(e){}
-}
+  // ── Hour tick labels ──
+  c.textAlign='center';
+  idxs.forEach((di,xi)=>{
+    if(xi%3!==0&&xi!==0&&xi!==n-1)return;
+    const t=new Date(times[di]);
+    const hr=t.getHours();
+    const lbl=hr===0?'12a':hr<12?`${hr}a`:hr===12?'12p':`${hr-12}p`;
+    c.fillStyle='rgba(255,255,255,0.2)';
+    c.font='9px DM Mono';
+    c.fillText(lbl,xOf(xi),H-8);
+  });
 
-function updateRadarFrame(idx){
-  currentFrameIdx=parseInt(idx);
-  if(!radarFrames.length||!radarMap)return;
-  const frame=radarFrames[currentFrameIdx];
-  if(radarLayer)radarMap.removeLayer(radarLayer);
-  radarLayer=L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,{attribution:'RainViewer',opacity:0.75,maxZoom:12}).addTo(radarMap);
-  const d=new Date(frame.time*1000);
-  const ts=d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  const str=`${ts} · ${frame.isPast?'OBSERVED':'NOWCAST'}`;
-  document.getElementById('radarTimeDisplay').textContent=str;
-  document.getElementById('radarTimeDisplay2').textContent=str;
-}
+  // ── Nowline ──
+  const nowX=xOf(n-1);
+  c.strokeStyle='rgba(56,189,248,0.2)';c.lineWidth=1;c.setLineDash([3,4]);
+  c.beginPath();c.moveTo(nowX,padT);c.lineTo(nowX,padT+cH);c.stroke();
+  c.setLineDash([]);
 
-function playRadarAnimation(){
-  if(radarAnimTimer)return;
-  radarAnimTimer=setInterval(()=>{currentFrameIdx=(currentFrameIdx+1)%radarFrames.length;document.getElementById('radarSlider').value=currentFrameIdx;updateRadarFrame(currentFrameIdx);},500);
+  // ── Rain bars (rendered first, behind everything) ──
+  rVals.forEach((r,xi)=>{
+    if(r<=0)return;
+    const x=xOf(xi);
+    const bH=(r/maxR)*cH*0.55;
+    const grad=c.createLinearGradient(0,padT+cH-bH,0,padT+cH);
+    grad.addColorStop(0,'rgba(59,130,246,0.7)');
+    grad.addColorStop(1,'rgba(29,78,216,0.3)');
+    c.fillStyle=grad;
+    const bW=Math.max(cW/n-1,2);
+    c.beginPath();
+    c.roundRect(x-bW/2,padT+cH-bH,bW,bH,2);
+    c.fill();
+  });
+
+  // ── Wind gust shaded band ──
+  c.beginPath();
+  idxs.forEach((_,xi)=>{
+    const y=padT+cH-((wVals[xi]/maxW)*cH*0.6);
+    if(xi===0)c.moveTo(xOf(xi),y);else c.lineTo(xOf(xi),y);
+  });
+  // bottom of band (gusts)
+  for(let xi=n-1;xi>=0;xi--){
+    const y=padT+cH-((gVals[xi]/maxW)*cH*0.6);
+    c.lineTo(xOf(xi),y);
+  }
+  c.closePath();
+  c.fillStyle='rgba(251,146,60,0.08)';
+  c.fill();
+
+  // ── Wind speed line ──
+  c.beginPath();
+  idxs.forEach((_,xi)=>{
+    const y=padT+cH-((wVals[xi]/maxW)*cH*0.6);
+    xi===0?c.moveTo(xOf(xi),y):c.lineTo(xOf(xi),y);
+  });
+  c.strokeStyle='rgba(251,146,60,0.5)';c.lineWidth=1.5;c.setLineDash([4,3]);
+  c.stroke();c.setLineDash([]);
+
+  // ── Temp gradient fill ──
+  const tempGrad=c.createLinearGradient(0,padT,0,padT+cH);
+  tempGrad.addColorStop(0,'rgba(56,189,248,0.25)');
+  tempGrad.addColorStop(1,'rgba(56,189,248,0.0)');
+  c.beginPath();
+  idxs.forEach((_,xi)=>{
+    const y=padT+cH-((tVals[xi]-minT)/rangeT)*cH;
+    xi===0?c.moveTo(xOf(xi),y):c.bezierCurveTo(xOf(xi-0.5),padT+cH-((tVals[xi-1]||tVals[xi]-minT)/rangeT)*cH,xOf(xi-0.5),y,xOf(xi),y);
+  });
+  c.lineTo(xOf(n-1),padT+cH);c.lineTo(xOf(0),padT+cH);c.closePath();
+  c.fillStyle=tempGrad;c.fill();
+
+  // ── Temp line (smooth bezier) ──
+  c.beginPath();
+  const pts=idxs.map((_,xi)=>[xOf(xi),padT+cH-((tVals[xi]-minT)/rangeT)*cH]);
+  c.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++){
+    const cx=(pts[i][0]+pts[i-1][0])/2;
+    c.bezierCurveTo(cx,pts[i-1][1],cx,pts[i][1],pts[i][0],pts[i][1]);
+  }
+  c.strokeStyle='rgba(56,189,248,0.9)';c.lineWidth=2;c.lineJoin='round';
+  c.stroke();
+
+  // ── Temp dots at each hour ──
+  pts.forEach(([x,y],xi)=>{
+    if(xi%2!==0)return;
+    c.beginPath();c.arc(x,y,2.5,0,Math.PI*2);
+    c.fillStyle='#38bdf8';c.fill();
+  });
+
+  // ── HIGH / LOW labels ──
+  const maxTIdx=tVals.indexOf(Math.max(...tVals));
+  const minTIdx=tVals.indexOf(Math.min(...tVals));
+  const [hx,hy]=pts[maxTIdx],[lx,ly]=pts[minTIdx];
+  c.font='bold 10px Barlow Condensed';c.textAlign='center';
+  c.fillStyle='rgba(56,189,248,0.9)';
+  c.fillText(`${Math.round(tVals[maxTIdx])}°`,hx,hy-10);
+  c.fillStyle='rgba(56,189,248,0.6)';
+  c.fillText(`${Math.round(tVals[minTIdx])}°`,lx,ly+16);
+
+  // ── Cumulative rain right axis label ──
+  if(cr>0){
+    c.fillStyle='rgba(59,130,246,0.6)';
+    c.font='9px DM Mono';c.textAlign='left';
+    c.fillText(cr.toFixed(2)+'"',W-padR+3,padT+20);
+  }
+
+  // ── Interactive tooltip ──
+  const tooltip=document.getElementById('histTooltip');
+  const rect=canvas.getBoundingClientRect();
+  canvas.onmousemove=canvas.ontouchmove=(e)=>{
+    const clientX=e.touches?e.touches[0].clientX:e.clientX;
+    const relX=clientX-rect.left;
+    const xi=Math.round((relX-padL)/cW*(n-1));
+    if(xi<0||xi>=n)return;
+    const di=idxs[xi];
+    const t=new Date(times[di]);
+    const hr=t.getHours();
+    const timeStr=hr===0?'12 AM':hr<12?`${hr} AM`:hr===12?'12 PM':`${hr-12} PM`;
+    tooltip.style.display='block';
+    tooltip.style.left=Math.min(relX+10,W-130)+'px';
+    tooltip.style.top='10px';
+    tooltip.innerHTML=`<div style="font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:5px">${timeStr}</div>
+      <div style="color:var(--accent);font-weight:600">${Math.round(tVals[xi])}°F</div>
+      <div style="color:var(--warm);font-size:10px">💨 ${Math.round(wVals[xi])} / ${Math.round(gVals[xi])} mph</div>
+      ${rVals[xi]>0?`<div style="color:var(--rain-col);font-size:10px">🌧 ${rVals[xi].toFixed(3)}"</div>`:''}`;
+  };
+  canvas.onmouseleave=canvas.ontouchend=()=>{tooltip.style.display='none';};
 }
-function pauseRadarAnimation(){if(radarAnimTimer){clearInterval(radarAnimTimer);radarAnimTimer=null;}}
 
 // ── SUN TIMES ──
 function buildSunTimes(lat,lng){
