@@ -1633,19 +1633,24 @@ function checkRainAlert(min,amb){
 
   // Build 6 sections of 15 min each
   const sects=[];
+  // Log raw values to console so we can see what Open-Meteo is actually returning
+  console.log('Rain minutely data sample:', minData.slice(0,10).map(d=>({mins:d.mins,precip:d.precip})));
+  const allPrecipMax=Math.max(...minData.map(d=>d.precip),0.001);
+  console.log('Max precip value in 90min window:', allPrecipMax);
+
   for(let s=0;s<6;s++){
     const startM=s*15,endM=(s+1)*15;
     const bucket=minData.filter(d=>d.mins>=startM&&d.mins<endM);
-    const avg=bucket.length?bucket.reduce((a,b)=>a+b.precip,0)/bucket.length:0;
     const maxBucket=bucket.length?Math.max(...bucket.map(d=>d.precip)):0;
-    const intensity=Math.min(maxBucket/0.8,1); // 0.8mm/15min = heavy
+    // Scale relative to the max in the whole 90min window, floor at 0.0005mm to show anything
+    const intensity=allPrecipMax>0.0005?Math.min(maxBucket/allPrecipMax,1):0;
     const label=s===0?'Now':`+${startM}m`;
     let emoji='⛅';
     if(intensity<0.05)emoji='⛅';
-    else if(intensity<0.25)emoji='🌦️';
+    else if(intensity<0.3)emoji='🌦️';
     else if(intensity<0.7)emoji='🌧️';
     else emoji='⛈️';
-    sects.push({label,intensity,emoji,avg,s});
+    sects.push({label,intensity,emoji,s});
   }
 
   let gaugeBadge='';
