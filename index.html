@@ -1085,7 +1085,7 @@ function buildHourlyStrip(data,now){
     const code=data.weather_code?.[di]||0;
 
     // For SR/SS hours: override emoji and show exact time
-    let emoji,extraLabel='';
+    let emoji,srssTime='';
     if(isSR&&!isNow){
       emoji='🌅';
       extraLabel=`<div class="h-sr-label">↑ ${srTimeStr}</div>`;
@@ -1097,14 +1097,25 @@ function buildHourlyStrip(data,now){
     }
 
     // UV color
+    let emoji,srssTime='';
+    if(isSR&&!isNow){
+      emoji='🌅';
+      srssTime=srTimeStr;
+    }else if(isSS&&!isNow){
+      emoji='🌇';
+      srssTime=ssTimeStr;
+    }else{
+      emoji=getEmoji(code,hr,sunRise,sunSet);
+    }
+
     const uvColor=uv<=2?'var(--green)':uv<=5?'var(--yellow)':uv<=7?'var(--warm)':uv<=10?'var(--red)':'#c084fc';
-    const uvLabel=uv<=2?'Low':uv<=5?'Mod':uv<=7?'High':uv<=10?'V.Hi':'Ext';
 
     const colClass=`hourly-col${isNow?' now':''}${isSR&&!isNow?' h-sr-col':''}${isSS&&!isNow?' h-ss-col':''}`;
+    // For SR/SS show exact time in place of hour label — no extra row, no height change
+    const timeDisplay=srssTime?`<div class="h-time" style="color:${isSR?'#fbbf24':'#fb923c'};font-size:8px">${srssTime}</div>`:`<div class="h-time${isNow?' now-label':''}">${isNow?'NOW':timeStr}</div>`;
 
     html+=`<div class="${colClass}" title="${timeStr}: ${temp}°F, ${getDesc(code)}, ${pop}% precip, ${wind}mph wind, UV ${uv}">
-      <div class="h-time${isNow?' now-label':''}">${isNow?'NOW':timeStr}</div>
-      ${extraLabel}
+      ${timeDisplay}
       <div class="h-icon">${emoji}</div>
       <div class="h-temp">${temp}°</div>
       <div class="h-feels">Feels ${feels}°</div>
@@ -1621,33 +1632,53 @@ function checkRainAlert(min,amb){
   const section=document.getElementById('rainForecastSection');
   if(!min||!min.time){section.style.display='none';return;}
   const now=new Date(),in90=new Date(now.getTime()+90*60000);
-  const minuteData=[];
+  const minData=[];
   for(let i=0;i<min.time.length;i++){
     const t=new Date(min.time[i]);
-    if(t>=now&&t<=in90)minuteData.push({t,precip:min.precipitation?.[i]||0,mins:Math.round((t-now)/60000)});
+    if(t>=now&&t<=in90)minData.push({t,precip:min.precipitation?.[i]||0,mins:Math.round((t-now)/60000)});
   }
-  const hasPrecip=minuteData.some(d=>d.precip>0);
+  const hasPrecip=minData.some(d=>d.precip>0);
   const gActive=amb&&(amb.hourlyrainin>0||amb.rainratein>0);
   if(!hasPrecip&&!gActive){section.style.display='none';return;}
-  const firstRain=minuteData.find(d=>d.precip>0);
-  const alertMsg=gActive?'Raining now':(firstRain?`Rain in ${firstRain.mins} min`:'Nearby');
+
+  const firstRain=minData.find(d=>d.precip>0);
+  const alertMsg=gActive?'Raining now':(firstRain?`In ${firstRain.mins} min`:'Nearby');
+
+  // Build 6 sections of 15 min each
+  const sects=[];
+  for(let s=0;s<6;s++){
+    const startM=s*15,endM=(s+1)*15;
+    const bucket=minData.filter(d=>d.mins>=startM&&d.mins<endM);
+    const avg=bucket.length?bucket.reduce((a,b)=>a+b.precip,0)/bucket.length:0;
+    const maxBucket=bucket.length?Math.max(...bucket.map(d=>d.precip)):0;
+    const intensity=Math.min(maxBucket/0.8,1); // 0.8mm/15min = heavy
+    const label=s===0?'Now':`+${startM}m`;
+    let emoji='⛅';
+    if(intensity<0.05)emoji='⛅';
+    else if(intensity<0.25)emoji='🌦️';
+    else if(intensity<0.7)emoji='🌧️';
+    else emoji='⛈️';
+    sects.push({label,intensity,emoji,avg,s});
+  }
+
   let gaugeBadge='';
   if(amb){
     const dr=amb.dailyrainin||0,hr=amb.hourlyrainin||0,rr=amb.rainratein||0;
     if(dr>0||hr>0||rr>0){
-      gaugeBadge=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid rgba(255,255,255,0.06);margin-top:10px;padding-top:10px">
-        <div style="text-align:center"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">TODAY</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${dr.toFixed(2)}"</div></div>
-        <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06);border-right:1px solid rgba(255,255,255,0.06)"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">THIS HOUR</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${hr.toFixed(2)}"</div></div>
-        <div style="text-align:center"><div style="font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:2px">RATE</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${rr.toFixed(1)}<span style="font-size:10px;color:var(--dim)">"∕hr</span></div></div>
+      gaugeBadge=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid rgba(255,255,255,0.07);margin-top:12px;padding-top:12px">
+        <div style="text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:2px">TODAY</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${dr.toFixed(2)}"</div></div>
+        <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.07);border-right:1px solid rgba(255,255,255,0.07)"><div style="font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:2px">THIS HOUR</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${hr.toFixed(2)}"</div></div>
+        <div style="text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-bottom:2px">RATE</div><div style="color:var(--rain-col);font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1">${rr.toFixed(1)}<span style="font-size:10px;color:rgba(255,255,255,0.35)">"∕hr</span></div></div>
       </div>`;
     }
   }
+
   section.innerHTML=`
-    <div style="background:rgba(8,13,22,0.95);border:1px solid rgba(59,130,246,0.25);border-radius:14px;padding:14px;margin-bottom:4px;overflow:hidden;position:relative">
-      <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(29,78,216,0.12),transparent 60%);pointer-events:none"></div>
+    <div style="background:#080d16;border:1px solid rgba(59,130,246,0.28);border-radius:14px;padding:14px;margin-bottom:4px;overflow:hidden;position:relative">
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(29,78,216,0.12),transparent 55%);pointer-events:none"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:relative">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--rain-col);box-shadow:0 0 8px rgba(59,130,246,0.8);animation:pulse 1.5s infinite"></div>
+          <div id="rainPulseDot" style="width:9px;height:9px;border-radius:50%;background:#3b82f6"></div>
           <div>
             <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:#fff">RAIN INCOMING</div>
             <div style="font-size:11px;color:rgba(96,165,250,0.9);letter-spacing:1px;margin-top:1px">${alertMsg.toUpperCase()}</div>
@@ -1655,72 +1686,121 @@ function checkRainAlert(min,amb){
         </div>
         <button onclick="closeRainForecast()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-size:10px;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:600">DISMISS</button>
       </div>
-      <canvas id="rainAlertCanvas" style="display:block;width:100%"></canvas>
+      <canvas id="rainCloudCanvas" style="display:block;width:100%;border-radius:10px"></canvas>
       ${gaugeBadge}
     </div>`;
   section.style.display='block';
-  requestAnimationFrame(()=>{
-    const canvas=document.getElementById('rainAlertCanvas');
-    if(!canvas||!minuteData.length)return;
-    const dpr=window.devicePixelRatio||1;
-    const W=Math.max(canvas.parentElement.clientWidth-28,280);
-    const H=72;
-    canvas.width=W*dpr;canvas.height=H*dpr;
-    canvas.style.width=W+'px';canvas.style.height=H+'px';
-    const c=canvas.getContext('2d');
-    c.scale(dpr,dpr);
-    const n=minuteData.length;
-    const padL=4,padR=4,padT=6,padB=22;
-    const cW=W-padL-padR,cH=H-padT-padB;
-    const maxP=Math.max(...minuteData.map(d=>d.precip),0.0001);
-    const xOf=i=>padL+(i/(n-1||1))*cW;
-    const yOf=p=>padT+cH-(Math.min(p/maxP,1)*cH);
-    // Points: zeros sit at baseline
-    const pts=minuteData.map((d,i)=>[xOf(i), d.precip>0 ? yOf(d.precip) : padT+cH]);
-    // Gradient fill
-    const fillGrad=c.createLinearGradient(0,padT,0,padT+cH);
-    fillGrad.addColorStop(0,'rgba(59,130,246,0.5)');
-    fillGrad.addColorStop(0.6,'rgba(59,130,246,0.15)');
-    fillGrad.addColorStop(1,'rgba(59,130,246,0.0)');
-    c.beginPath();
-    c.moveTo(pts[0][0],pts[0][1]);
-    for(let i=1;i<pts.length;i++){
-      const cpx=(pts[i-1][0]+pts[i][0])/2;
-      c.bezierCurveTo(cpx,pts[i-1][1],cpx,pts[i][1],pts[i][0],pts[i][1]);
-    }
-    c.lineTo(pts[n-1][0],padT+cH);
-    c.lineTo(pts[0][0],padT+cH);
-    c.closePath();
-    c.fillStyle=fillGrad;c.fill();
-    // Glowing line
-    c.beginPath();
-    c.moveTo(pts[0][0],pts[0][1]);
-    for(let i=1;i<pts.length;i++){
-      const cpx=(pts[i-1][0]+pts[i][0])/2;
-      c.bezierCurveTo(cpx,pts[i-1][1],cpx,pts[i][1],pts[i][0],pts[i][1]);
-    }
-    const lineGrad=c.createLinearGradient(0,0,W,0);
-    lineGrad.addColorStop(0,'rgba(96,165,250,0.2)');
-    lineGrad.addColorStop(0.1,'rgba(96,165,250,1)');
-    lineGrad.addColorStop(0.9,'rgba(96,165,250,1)');
-    lineGrad.addColorStop(1,'rgba(96,165,250,0.2)');
-    c.strokeStyle=lineGrad;c.lineWidth=2;c.lineJoin='round';c.lineCap='round';
-    c.shadowColor='rgba(96,165,250,0.6)';c.shadowBlur=8;
-    c.stroke();
-    c.shadowBlur=0;
-    // Time labels
-    c.fillStyle='rgba(255,255,255,0.28)';
-    c.font='9px DM Mono';c.textAlign='center';
-    [0,15,30,45,60,75,90].forEach(m=>{
-      const idx=minuteData.findIndex(d=>d.mins>=m);
-      if(idx<0)return;
-      c.fillText(m===0?'Now':`+${m}m`,xOf(idx),H-5);
-    });
-    // Now line
-    c.strokeStyle='rgba(255,255,255,0.12)';c.lineWidth=1;c.setLineDash([2,4]);
-    c.beginPath();c.moveTo(xOf(0),padT);c.lineTo(xOf(0),padT+cH);c.stroke();
-    c.setLineDash([]);
+
+  // Animate pulse dot
+  const dot=document.getElementById('rainPulseDot');
+  let ps=1,pd=1;
+  const pulseInt=setInterval(()=>{
+    if(!document.getElementById('rainPulseDot')){clearInterval(pulseInt);return;}
+    ps+=pd*0.04;if(ps>1.45)pd=-1;if(ps<0.7)pd=1;
+    dot.style.transform=`scale(${ps})`;
+    dot.style.boxShadow=`0 0 ${Math.round(6*ps)}px rgba(59,130,246,0.9)`;
+  },50);
+
+  // Build drop pools
+  const pools=sects.map(s=>{
+    const count=Math.round(s.intensity*32)+(s.intensity>0.05?3:0);
+    return Array.from({length:count},()=>({
+      x:Math.random(),y:Math.random()*68,
+      len:5+Math.random()*8,
+      speed:2.2+s.intensity*3.5+Math.random()*1.5,
+      op:0.2+s.intensity*0.55+Math.random()*0.1
+    }));
   });
+
+  const CLOUD_H=44,RAIN_H=64,LABEL_H=20,PAD=5,GAP=4;
+  const TOTAL_H=PAD+CLOUD_H+RAIN_H+LABEL_H+PAD;
+  const canvas=document.getElementById('rainCloudCanvas');
+  const dpr=window.devicePixelRatio||1;
+
+  function initC(){
+    const W=canvas.offsetWidth||350;
+    canvas.width=W*dpr;canvas.height=TOTAL_H*dpr;
+    canvas.style.height=TOTAL_H+'px';
+    return W;
+  }
+
+  function drawFrame(){
+    if(!document.getElementById('rainCloudCanvas'))return;
+    const W=canvas.offsetWidth||350;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();ctx.scale(dpr,dpr);
+    const n=sects.length;
+    const sectW=(W-PAD*2-GAP*(n-1))/n;
+
+    sects.forEach((s,si)=>{
+      const sx=PAD+si*(sectW+GAP);
+      const rainTop=PAD+CLOUD_H;
+      const rainBot=rainTop+RAIN_H;
+      const cx2=sx+sectW/2;
+
+      // Section bg
+      ctx.beginPath();ctx.roundRect(sx,PAD,sectW,CLOUD_H+RAIN_H,8);
+      ctx.fillStyle=s.intensity>0.05?`rgba(20,35,100,${0.12+s.intensity*0.22})`:'rgba(255,255,255,0.03)';
+      ctx.fill();
+
+      // Divider
+      if(si>0){ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sx-GAP/2,PAD+8);ctx.lineTo(sx-GAP/2,rainBot-8);ctx.stroke();}
+
+      // Emoji cloud
+      const eSize=Math.round(20+s.intensity*10);
+      ctx.save();
+      ctx.globalAlpha=s.intensity<0.05?0.5:1;
+      ctx.font=`${eSize}px serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(s.emoji,cx2,PAD+CLOUD_H/2);
+      ctx.restore();
+
+      // Clipped rain drops
+      const drops=pools[si];
+      ctx.save();
+      ctx.beginPath();ctx.rect(sx+2,rainTop,sectW-4,RAIN_H);ctx.clip();
+      drops.forEach(d=>{
+        const dx=sx+2+d.x*(sectW-4);
+        const dy=rainTop+d.y;
+        ctx.beginPath();ctx.moveTo(dx,dy);ctx.lineTo(dx-0.7,dy+d.len);
+        ctx.strokeStyle=`rgba(147,197,253,${d.op})`;ctx.lineWidth=0.75;ctx.stroke();
+        if(dy+d.len>rainBot-8){
+          const age=Math.min((dy+d.len-(rainBot-8))/8,1);
+          ctx.beginPath();ctx.arc(dx,rainBot-3,age*2.2,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(147,197,253,${d.op*(1-age)*0.5})`;ctx.lineWidth=0.5;ctx.stroke();
+        }
+        d.y+=d.speed;
+        if(d.y>RAIN_H+10){d.y=-d.len-Math.random()*15;d.x=Math.random();}
+      });
+      // Fade bottom
+      const fg=ctx.createLinearGradient(0,rainBot-16,0,rainBot);
+      fg.addColorStop(0,'rgba(0,0,0,0)');fg.addColorStop(1,`rgba(8,13,22,${0.55+s.intensity*0.3})`);
+      ctx.fillStyle=fg;ctx.fillRect(sx,rainBot-16,sectW,16);
+      ctx.restore();
+
+      // Intensity text
+      if(s.intensity>0.05){
+        const txt=s.intensity<0.25?'Drizzle':s.intensity<0.5?'Light':s.intensity<0.8?'Moderate':'Heavy';
+        ctx.fillStyle=`rgba(190,215,255,${0.28+s.intensity*0.35})`;
+        ctx.font='7px DM Mono';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+        ctx.fillText(txt,cx2,rainBot-4);
+      }
+
+      // Time label
+      ctx.fillStyle=si===0?'rgba(96,165,250,0.9)':'rgba(255,255,255,0.3)';
+      ctx.font='9px DM Mono';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText(s.label,cx2,rainBot+LABEL_H-4);
+      if(si===0){ctx.beginPath();ctx.arc(cx2,rainBot+4,2,0,Math.PI*2);ctx.fillStyle='rgba(96,165,250,0.7)';ctx.fill();}
+    });
+
+    ctx.restore();
+    if(document.getElementById('rainCloudCanvas'))requestAnimationFrame(drawFrame);
+  }
+
+  initC();
+  window.addEventListener('resize',initC);
+  drawFrame();
 }
 function closeRainForecast(){document.getElementById('rainForecastSection').style.display='none';}
 
