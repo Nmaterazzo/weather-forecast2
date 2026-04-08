@@ -10,10 +10,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#05080f;
-  --glass:rgba(255,255,255,0.035);
-  --glass2:rgba(255,255,255,0.06);
-  --border:rgba(255,255,255,0.08);
+  --bg:#080d16;
+  --glass:rgba(255,255,255,0.07);
+  --glass2:rgba(255,255,255,0.12);
+  --border:rgba(255,255,255,0.13);
   --border2:rgba(255,255,255,0.14);
   --text:#f0f4f8;
   --dim:#5a7090;
@@ -310,9 +310,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 }
 .day-row{
   display:grid;
-  grid-template-columns:80px 30px 1fr 50px 50px 60px;
-  align-items:center;gap:8px;
-  padding:10px 14px;
+  grid-template-columns:72px 26px 1fr 44px 56px;
+  align-items:center;gap:6px;
+  padding:10px 12px;
   background:var(--glass);
   border:1px solid var(--border);
   border-radius:10px;
@@ -893,9 +893,14 @@ async function searchCity(){
     setLocation(parseFloat(d[0].lat),parseFloat(d[0].lon));
   }catch(e){alert('Search error: '+e.message);}
 }
-function setLocation(lat,lng){hideSearch();getForecast(lat,lng);}
+function setLocation(lat,lng){
+  window._userPickedLocation=true;
+  hideSearch();
+  getForecast(lat,lng);
+}
 function getCurrentLocation(){
   if(!navigator.geolocation){alert('Geolocation not supported');return;}
+  window._userPickedLocation=true;
   hideSearch();
   setLoad(5,'Getting location…');
   navigator.geolocation.getCurrentPosition(
@@ -1391,8 +1396,10 @@ function build10Day(data,ambientData){
           <div style="position:absolute;right:${barRight}%;transform:translateX(50%);top:-10px;font-size:9px;color:var(--text);font-family:'DM Mono',monospace">${Math.round(day.hi)}°</div>
         </div>
         <div class="dr-pop"><div class="dr-pop-val">${Math.round(day.pop)}%</div><div class="dr-pop-lbl">POP</div></div>
-        <div style="font-size:11px;color:var(--rain-col);text-align:right;font-family:'DM Mono',monospace">${precipStr}</div>
-        <div style="font-size:10px;color:var(--dim);text-align:right;font-family:'DM Mono',monospace">${Math.round(day.maxWind)}<span style="font-size:8px"> mph↑</span></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <div style="font-size:11px;color:var(--rain-col);font-family:'DM Mono',monospace">${precipStr}</div>
+          <div style="font-size:9px;color:var(--dim);font-family:'DM Mono',monospace">${Math.round(day.maxWind)}<span style="font-size:8px">↑mph</span></div>
+        </div>
       </div>
       <div class="detail-panel" id="detail_${idx}">
         <div class="detail-inner">
@@ -1958,8 +1965,10 @@ window.addEventListener('load',()=>{
   // Show search overlay on first load
   document.getElementById('searchOverlay').classList.remove('hidden');
   document.getElementById('loadScreen').classList.add('hidden');
-  // Auto-load Land O' Lakes
-  setTimeout(()=>getForecast(28.1975,-82.4441),300);
+  // Auto-load Land O' Lakes only if user hasn't already tapped a preset
+  setTimeout(()=>{
+    if(!window._userPickedLocation) getForecast(28.1975,-82.4441);
+  },400);
 });
 </script>
 <link rel="manifest" href="/weather-forecast/manifest.json">
