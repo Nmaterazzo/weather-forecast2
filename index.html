@@ -1631,26 +1631,23 @@ function checkRainAlert(min,amb){
   const firstRain=minData.find(d=>d.precip>0);
   const alertMsg=gActive?'Raining now':(firstRain?`In ${firstRain.mins} min`:'Nearby');
 
-  // Build 6 sections of 15 min each
+  // Build 6 x 15-min sections — absolute thresholds, each bucket independent
+  // Open-Meteo minutely_15 precipitation is mm per 15min interval
   const sects=[];
-  // Log raw values to console so we can see what Open-Meteo is actually returning
-  console.log('Rain minutely data sample:', minData.slice(0,10).map(d=>({mins:d.mins,precip:d.precip})));
-  const allPrecipMax=Math.max(...minData.map(d=>d.precip),0.001);
-  console.log('Max precip value in 90min window:', allPrecipMax);
-
+  console.log('Rain minutely sample:', minData.slice(0,12).map(d=>({mins:d.mins,precip:d.precip})));
   for(let s=0;s<6;s++){
     const startM=s*15,endM=(s+1)*15;
     const bucket=minData.filter(d=>d.mins>=startM&&d.mins<endM);
     const maxBucket=bucket.length?Math.max(...bucket.map(d=>d.precip)):0;
-    // Scale relative to the max in the whole 90min window, floor at 0.0005mm to show anything
-    const intensity=allPrecipMax>0.0005?Math.min(maxBucket/allPrecipMax,1):0;
+    const hasRain=maxBucket>0;
+    let intensity=0;
+    if(maxBucket>0)   intensity=0.2;
+    if(maxBucket>0.1) intensity=0.45;
+    if(maxBucket>0.5) intensity=0.72;
+    if(maxBucket>1.5) intensity=1.0;
     const label=s===0?'Now':`+${startM}m`;
-    let emoji='⛅';
-    if(intensity<0.05)emoji='⛅';
-    else if(intensity<0.3)emoji='🌦️';
-    else if(intensity<0.7)emoji='🌧️';
-    else emoji='⛈️';
-    sects.push({label,intensity,emoji,s});
+    let emoji=hasRain?(intensity<0.35?'🌦️':intensity<0.7?'🌧️':'⛈️'):'⛅';
+    sects.push({label,intensity,emoji,hasRain,s});
   }
 
   let gaugeBadge='';
@@ -1695,7 +1692,7 @@ function checkRainAlert(min,amb){
 
   // Build drop pools
   const pools=sects.map(s=>{
-    const count=Math.round(s.intensity*32)+(s.intensity>0.05?3:0);
+    const count=s.hasRain?Math.round(s.intensity*32)+3:0;
     return Array.from({length:count},()=>({
       x:Math.random(),y:Math.random()*68,
       len:5+Math.random()*8,
@@ -1733,7 +1730,7 @@ function checkRainAlert(min,amb){
 
       // Section bg
       ctx.beginPath();ctx.roundRect(sx,PAD,sectW,CLOUD_H+RAIN_H,8);
-      ctx.fillStyle=s.intensity>0.05?`rgba(20,35,100,${0.12+s.intensity*0.22})`:'rgba(255,255,255,0.03)';
+      ctx.fillStyle=s.hasRain?`rgba(20,35,100,${0.12+s.intensity*0.22})`:'rgba(255,255,255,0.03)';
       ctx.fill();
 
       // Divider
@@ -1742,7 +1739,7 @@ function checkRainAlert(min,amb){
       // Emoji cloud
       const eSize=Math.round(20+s.intensity*10);
       ctx.save();
-      ctx.globalAlpha=s.intensity<0.05?0.5:1;
+      ctx.globalAlpha=s.hasRain?1:0.45;
       ctx.font=`${eSize}px serif`;
       ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(s.emoji,cx2,PAD+CLOUD_H/2);
@@ -1772,7 +1769,7 @@ function checkRainAlert(min,amb){
       ctx.restore();
 
       // Intensity text
-      if(s.intensity>0.05){
+      if(s.hasRain){
         const txt=s.intensity<0.25?'Drizzle':s.intensity<0.5?'Light':s.intensity<0.8?'Moderate':'Heavy';
         ctx.fillStyle=`rgba(190,215,255,${0.28+s.intensity*0.35})`;
         ctx.font='7px DM Mono';ctx.textAlign='center';ctx.textBaseline='alphabetic';
