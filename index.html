@@ -1084,19 +1084,6 @@ function buildHourlyStrip(data,now){
     const uv=Math.round(data.uv_index?.[di]||0);
     const code=data.weather_code?.[di]||0;
 
-    // For SR/SS hours: override emoji and show exact time
-    let emoji,srssTime='';
-    if(isSR&&!isNow){
-      emoji='🌅';
-      extraLabel=`<div class="h-sr-label">↑ ${srTimeStr}</div>`;
-    }else if(isSS&&!isNow){
-      emoji='🌇';
-      extraLabel=`<div class="h-ss-label">↓ ${ssTimeStr}</div>`;
-    }else{
-      emoji=getEmoji(code,hr,sunRise,sunSet);
-    }
-
-    // UV color
     let emoji,srssTime='';
     if(isSR&&!isNow){
       emoji='🌅';
@@ -1897,6 +1884,6 @@ window.addEventListener('load',()=>{
 });
 </script>
 <link rel="manifest" href="/weather-forecast/manifest.json">
-<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/weather-forecast/service-worker.js');</script>
+
 </body>
 </html>
