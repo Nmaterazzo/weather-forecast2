@@ -805,7 +805,9 @@ async function getForecast(lat,lng){
   if(isUS){
     promises.push(
       fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`,{headers:{'User-Agent':'(WxBlend)'}})
-      .then(r=>r.json()).then(p=>fetch(p.properties.forecastHourly,{headers:{'User-Agent':'(WxBlend)'}}))
+      .then(r=>{if(!r.ok)throw new Error('NWS points failed');return r.json();})
+      .then(p=>{if(!p?.properties?.forecastHourly)throw new Error('NWS no hourly url');return fetch(p.properties.forecastHourly,{headers:{'User-Agent':'(WxBlend)'}});})
+      .then(r=>{if(!r.ok)throw new Error('NWS hourly failed');return r.json();})
       .then(r=>r.json()).then(d=>({type:'weathergov',data:d})).catch(()=>null)
     );
   }
@@ -833,7 +835,7 @@ async function getForecast(lat,lng){
   window.currentLocationTimezoneOffset=tz;
 
   let wgData=null;
-  if(wg)wgData=convertWGtoStd(wg.data.properties.periods);
+  if(wg?.data?.properties?.periods)wgData=convertWGtoStd(wg.data.properties.periods);
   const blended=buildBlend(wgData,bm?.data?.hourly,gfs?.data?.hourly,ec?.data?.hourly);
   currentForecastData=blended;
 
